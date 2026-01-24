@@ -1,0 +1,82 @@
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: litellm-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: litellm
+  template:
+    metadata:
+      labels:
+        app: litellm
+    spec:
+      containers:
+      - name: litellm
+        image: ghcr.io/berriai/litellm:main-latest
+        env:
+        - name: LITELLM_MASTER_KEY
+          valueFrom:
+            secretKeyRef:
+              name: litellm-auth
+              key: master-key
+        - name: UI_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: litellm-auth
+              key: ui-password
+        - name: UI_USERNAME
+          value: "admin"
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-auth
+              key: postgres-password
+        - name: DATABASE_URL
+          value: 'postgresql://admin:$(DB_PASSWORD)@postgres-service:5432/litellm'
+        - name: STORE_MODEL_IN_DB
+          value: "True"
+# Pegandome con TLS
+        - name: LITELLM_MODE
+          value: "proxy"
+        - name: LITELLM_PROXY_BASE_URL
+          value: "https://proxygpt.local/"
+        - name: SECURE_COOKIES
+          value: "true"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: litellm-service
+spec:
+  selector:
+    app: litellm
+  ports:
+  - port: 4000
+    targetPort: 4000
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: litellm-ingress
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.middlewares: default-filtro-ataques@kubernetescrd
+spec:
+  tls:
+  - hosts:
+    - 172.23.97.66
+    secretName: tfm-tls-cert
+  rules:
+  - http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: litellm-service
+            port:
+              number: 4000
