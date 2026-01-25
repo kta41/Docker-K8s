@@ -43,6 +43,6 @@ spec:
             - name: LITELLM_MODE
               value: "proxy"
             - name: LITELLM_PROXY_BASE_URL
-              value: "https://replace-me.kta41.local/"   # ← Changed on Kustomize
+              value: "https://placeholder.kta41.local/"   # ← Changed on Kustomize
             - name: SECURE_COOKIES
               value: "true"
