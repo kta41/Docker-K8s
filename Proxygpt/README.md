@@ -1,4 +1,4 @@
-# 🚀 AI-Stack GitOps: LiteLLM + Open WebUI + Postgres
+#  🚀 AI-Stack GitOps: LiteLLM + Open WebUI + Postgres
 
 Este repositorio contiene la arquitectura completa para desplegar un stack de Inteligencia Artificial privado y escalable en **Kubernetes**. La gestión de la infraestructura se realiza mediante un modelo **GitOps** utilizando **ArgoCD** y **Kustomize**.
 
