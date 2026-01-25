@@ -1,3 +1,0 @@
-# proxygpt
-
-LiteLLM + OpenWebUI
