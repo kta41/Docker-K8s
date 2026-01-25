@@ -55,6 +55,11 @@ kubectl apply -f argocd/
 
 ArgoCD se encargará de sincronizar los recursos en el orden correcto, gestionando las dependencias y asegurando que el estado del clúster coincida con este repositorio.
 
+Con el cluster de postgresql activado, el ultimo paso de despliegue será generar la base de datos para OpenWeb UI: 
+
+```bash
+kubectl exec -it $(kubectl get pod -l app=postgres -o name) -- psql -U admin -d litellm -c "CREATE DATABASE openwebui_db;"
+```
 
 ## 💡 Lecciones Aprendidas (Troubleshooting)
 
