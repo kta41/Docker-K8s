@@ -8,6 +8,8 @@ Este repositorio contiene la arquitectura completa para desplegar un stack de In
 
 ## 🏗️ Arquitectura del Sistema
 
+![Estado de ArgoCD](./img/dashboard.png)
+
 El stack se compone de tres capas principales diseñadas para trabajar en armonía dentro del clúster:
 
 1.  **Interfaz de Usuario (Frontend):** [Open WebUI](https://github.com/open-webui/open-webui), una interfaz intuitiva para interactuar con LLMs.
