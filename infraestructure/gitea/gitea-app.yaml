@@ -1,0 +1,46 @@
+project: default
+source:
+  repoURL: https://dl.gitea.com/charts/
+  targetRevision: 10.2.0
+  helm:
+    values: |
+      # Desactivamos lo que rompe permisos
+      postgresql: { enabled: false }
+      postgresql-ha: { enabled: false }
+      redis-cluster: { enabled: false }
+
+      # Quitamos los scripts de espera que te bloquean en "init"
+      init:
+        waitForDatabase: false
+
+      gitea:
+        config:
+          database: { DB_TYPE: sqlite3 }
+          server:
+            DOMAIN: gitea.local
+            ROOT_URL: http://gitea.local/
+          security:
+            INSTALL_LOCK: true
+
+      # INGRESS PARA TRAEFIK
+      ingress:
+        enabled: true
+        className: traefik
+        annotations:
+          traefik.ingress.kubernetes.io/router.entrypoints: web
+        hosts:
+          - host: gitea.local
+            paths:
+              - path: /
+                pathType: Prefix
+  chart: gitea
+destination:
+  server: https://kubernetes.default.svc
+  namespace: gitea
+syncPolicy:
+  automated:
+    prune: true
+    selfHeal: true
+    enabled: false
+  syncOptions:
+    - CreateNamespace=true
