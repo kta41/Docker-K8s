@@ -34,6 +34,7 @@ El stack se compone de tres capas principales diseñadas para trabajar en armon�
 ├── postgres/           # Base de datos (Deployment, Service, PVC)
 ├── litellm/            # Proxy de modelos con configuración Kustomize
 └── openwebui/          # Interfaz web con Overlays para entorno Prod (Ingress/TLS)
+```
 
 ## 🚀 Despliegue con GitOps
 
