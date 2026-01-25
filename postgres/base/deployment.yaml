@@ -27,7 +27,7 @@ spec:
             secretKeyRef:
               name: postgres-auth
               key: postgres-password
-        # IMPORTANTE: Postgres necesita saber dónde está el volumen
+        # Mantenemos tu configuración de rutas para no romper la base de datos existente
         - name: PGDATA
           value: /var/lib/postgresql/data/pgdata
         volumeMounts:
@@ -37,14 +37,3 @@ spec:
       - name: postgres-storage
         persistentVolumeClaim:
           claimName: postgres-pvc
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: postgres-service
-spec:
-  selector:
-    app: postgres
-  ports:
-  - port: 5432
-    targetPort: 5432
