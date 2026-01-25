@@ -9,10 +9,10 @@ metadata:
 spec:
   tls:
     - hosts:
-        - "replace-me.kta41.local"
+        - "litellm.kta41.local"
       secretName: litellm-tls-secret
   rules:
-    - host: "replace-me.kta41.local"
+    - host: "litellm.kta41.local"
       http:
         paths:
           - path: /
