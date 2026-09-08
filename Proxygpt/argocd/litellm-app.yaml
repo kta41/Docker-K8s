@@ -7,7 +7,7 @@ spec:
   project: default
   source:
     repoURL: https://github.com/kta41/Docker-K8s.git
-    path: litellm/base
+    path: Proxygpt/litellm/base
     targetRevision: feat/postgres-auto-init
     kustomize: {}
   destination:

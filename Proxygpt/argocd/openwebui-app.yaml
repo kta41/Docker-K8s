@@ -7,7 +7,7 @@ spec:
   project: default
   source:
     repoURL: https://github.com/kta41/Docker-K8s.git
-    path: openwebui/overlays/prod
+    path: Proxygpt/openwebui/overlays/prod
     targetRevision: feat/postgres-auto-init
     kustomize: {}
   destination:
