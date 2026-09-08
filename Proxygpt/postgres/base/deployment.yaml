@@ -27,13 +27,19 @@ spec:
             secretKeyRef:
               name: postgres-auth
               key: postgres-password
-        # Mantenemos tu configuración de rutas para no romper la base de datos existente
         - name: PGDATA
           value: /var/lib/postgresql/data/pgdata
         volumeMounts:
         - name: postgres-storage
           mountPath: /var/lib/postgresql/data
+        # Montaje del script de auto-creación de base de datos
+        - name: init-script
+          mountPath: /docker-entrypoint-initdb.d/
       volumes:
       - name: postgres-storage
         persistentVolumeClaim:
           claimName: postgres-pvc
+      # Volumen mapeado desde el ConfigMap
+      - name: init-script
+        configMap:
+          name: postgres-init-script

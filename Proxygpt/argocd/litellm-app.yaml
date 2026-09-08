@@ -8,7 +8,7 @@ spec:
   source:
     repoURL: https://github.com/kta41/Docker-K8s.git
     path: litellm/base
-    targetRevision: main
+    targetRevision: feat/postgres-auto-init
     kustomize: {}
   destination:
     server: https://kubernetes.default.svc
