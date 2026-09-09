@@ -70,3 +70,19 @@ Durante el desarrollo, se resolvieron retos técnicos críticos, destacando:
     GitOps Workflow: Migración de configuraciones estáticas a un flujo dinámico con Kustomize, permitiendo la reutilización de código entre bases y parches de producción.
 
     Seguridad de Secretos: Implementación de inyección de secretos en memoria para evitar la exposición de credenciales en el historial de Git.
+
+## Fix Red WSL2 (Timeout Descargas)
+Si los pods no tienen salida a internet o fallan los DNS en WSL2:
+
+1. Cambiar Flannel a Host Gateway:
+`echo "flannel-backend: host-gw" | sudo tee -a /etc/rancher/k3s/config.yaml`
+
+2. Usar DNS externos puros:
+`echo "nameserver 8.8.8.8" | sudo tee /etc/rancher/k3s/resolv.conf`
+`echo "resolv-conf: /etc/rancher/k3s/resolv.conf" | sudo tee -a /etc/rancher/k3s/config.yaml`
+
+3. Purgar y reiniciar:
+`sudo systemctl stop k3s`
+`sudo ip link delete cni0`
+`sudo ip link delete flannel.1`
+`sudo systemctl start k3s`

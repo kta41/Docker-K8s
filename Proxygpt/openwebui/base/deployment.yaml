@@ -23,7 +23,7 @@ spec:
             memory: "500Mi"
           limits:
             cpu: "1000m"
-            memory: "1Gi"
+            memory: "3Gi"
         env:
         - name: DB_PASSWORD
           valueFrom:
@@ -59,6 +59,13 @@ spec:
         volumeMounts:
         - name: open-webui-storage
           mountPath: /app/backend/data
+      startupProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          failureThreshold: 60
       volumes:
       - name: open-webui-storage
         persistentVolumeClaim:
