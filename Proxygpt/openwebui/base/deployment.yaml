@@ -23,7 +23,7 @@ spec:
             memory: "500Mi"
           limits:
             cpu: "1000m"
-            memory: "3Gi"
+            memory: "2Gi"
         env:
         - name: DB_PASSWORD
           valueFrom:
@@ -53,9 +53,9 @@ spec:
           value: "http://litellm-service:4000/v1"
         - name: RAG_OPENAI_API_KEY
           valueFrom:
-          secretKeyRef:
-            name: openwebui-auth
-            key: proxy-key
+            secretKeyRef:
+              name: openwebui-auth
+              key: proxy-key
         volumeMounts:
         - name: open-webui-storage
           mountPath: /app/backend/data
