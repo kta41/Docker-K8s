@@ -40,13 +40,22 @@ spec:
               name: openwebui-auth
               key: proxy-key
         - name: WEBUI_URL
-          value: "https://placeholder.kta41.local" # <-- Será sustituido
+          value: "https://ia.kta41.local" # <-- Será sustituido
         - name: WEBUI_NAME
           value: "IA Segura"
         - name: ENABLE_SIGNUP
           value: "true"
         - name: DEFAULT_USER_ROLE
           value: "pending"
+        - name: RAG_EMBEDDING_ENGINE
+          value: "openai"
+        - name: RAG_OPENAI_API_BASE_URL
+          value: "http://litellm-service:4000/v1"
+        - name: RAG_OPENAI_API_KEY
+          valueFrom:
+          secretKeyRef:
+            name: openwebui-auth
+            key: proxy-key
         volumeMounts:
         - name: open-webui-storage
           mountPath: /app/backend/data
