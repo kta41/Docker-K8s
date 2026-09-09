@@ -12,7 +12,6 @@ spec:
       labels:
         app: open-webui
     spec:
-      
       containers:
       - name: open-webui
         image: ghcr.io/open-webui/open-webui:main
