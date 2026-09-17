@@ -111,32 +111,47 @@ else
   echo "Using existing Argo CD, Traefik and cert-manager."
 fi
 
-replace_pattern() {
-  local file=$1 pattern=$2 replacement=$3
-  python3 - "$file" "$pattern" "$replacement" <<'PY'
+replace_domain() {
+  local kustomization=$1 ingress=$2 certificate=$3 desired=$4
+  python3 - "$kustomization" "$ingress" "$certificate" "$desired" <<'PY'
 import pathlib
 import re
 import sys
 
-path, pattern, replacement = sys.argv[1:]
-text = pathlib.Path(path).read_text()
-updated, count = re.subn(pattern, replacement, text, flags=re.MULTILINE)
-if count == 0:
-    raise SystemExit(f"expected pattern not found in {path}: {pattern}")
-pathlib.Path(path).write_text(updated)
+kustomization, ingress, certificate, desired = sys.argv[1:]
+kustomization_path = pathlib.Path(kustomization)
+text = kustomization_path.read_text()
+match = re.search(r"full_domain=([^\s]+)", text)
+if not match:
+    raise SystemExit(f"full_domain not found in {kustomization}")
+current = match.group(1)
+kustomization_path.write_text(text.replace(f"full_domain={current}", f"full_domain={desired}"))
+
+for filename in (ingress, certificate):
+    path = pathlib.Path(filename)
+    content = path.read_text()
+    if current not in content:
+        raise SystemExit(f"domain {current} not found in {filename}")
+    path.write_text(content.replace(current, desired))
 PY
 }
 
-replace_pattern "$ROOT_DIR/Proxygpt/litellm/overlays/prod/kustomization.yaml" \
-  'full_domain=\S+' "full_domain=$LITELLM_DOMAIN"
-replace_pattern "$ROOT_DIR/Proxygpt/litellm/overlays/prod/ingress.yaml" \
-  'litellm\.[a-z0-9.-]+' "$LITELLM_DOMAIN"
-replace_pattern "$ROOT_DIR/Proxygpt/openwebui/overlays/prod/kustomization.yaml" \
-  'full_domain=\S+' "full_domain=$OPENWEBUI_DOMAIN"
-replace_pattern "$ROOT_DIR/Proxygpt/openwebui/overlays/prod/ingress.yaml" \
-  'ia\.[a-z0-9.-]+' "$OPENWEBUI_DOMAIN"
-replace_pattern "$ROOT_DIR/Proxygpt/openwebui/overlays/prod/cert.yaml" \
-  'ia\.[a-z0-9.-]+' "$OPENWEBUI_DOMAIN"
+replace_domain \
+  "$ROOT_DIR/Proxygpt/litellm/overlays/prod/kustomization.yaml" \
+  "$ROOT_DIR/Proxygpt/litellm/overlays/prod/ingress.yaml" \
+  "$ROOT_DIR/Proxygpt/litellm/overlays/prod/cert.yaml" \
+  "$LITELLM_DOMAIN"
+replace_domain \
+  "$ROOT_DIR/Proxygpt/openwebui/overlays/prod/kustomization.yaml" \
+  "$ROOT_DIR/Proxygpt/openwebui/overlays/prod/ingress.yaml" \
+  "$ROOT_DIR/Proxygpt/openwebui/overlays/prod/cert.yaml" \
+  "$OPENWEBUI_DOMAIN"
+
+if ! kubectl kustomize "$ROOT_DIR/Proxygpt/litellm/overlays/prod" >/dev/null ||
+   ! kubectl kustomize "$ROOT_DIR/Proxygpt/openwebui/overlays/prod" >/dev/null; then
+  echo "Generated overlays failed Kustomize validation; aborting before cluster changes." >&2
+  exit 1
+fi
 
 echo "Applying application secrets (values are sent only to the Kubernetes API)."
 kubectl apply -f - <<EOF
@@ -186,12 +201,6 @@ EOF
     [[ "$MODEL_PROVIDER" == anthropic || "$MODEL_PROVIDER" == both ]] &&
       printf '  anthropic-api-key: %s\n' "$(b64 "$ANTHROPIC_API_KEY")"
   } | kubectl apply -f -
-fi
-
-if ! kubectl kustomize "$ROOT_DIR/Proxygpt/litellm/overlays/prod" >/dev/null ||
-   ! kubectl kustomize "$ROOT_DIR/Proxygpt/openwebui/overlays/prod" >/dev/null; then
-  echo "Generated overlays failed Kustomize validation; aborting before Argo CD changes." >&2
-  exit 1
 fi
 
 CUSTOM_DOMAINS=false

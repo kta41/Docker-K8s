@@ -6,7 +6,7 @@ metadata:
 spec:
   secretName: litellm-tls-secret    # <-- lo consume el Ingress
   dnsNames:
-    - "{{ .Subdomain }}.kta41.local"   # ← variable que rellenaremos abajo
+    - "litellm.kta41.local"
   issuerRef:
     name: kta-ca-issuer               # <-- nuestro ClusterIssuer global
     kind: ClusterIssuer
