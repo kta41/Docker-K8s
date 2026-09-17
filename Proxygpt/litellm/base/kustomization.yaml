@@ -1,4 +1,9 @@
 resources:
   - deployment.yaml
   - service.yaml
+
+configMapGenerator:
+  - name: litellm-model-config
+    files:
+      - config.yaml
   

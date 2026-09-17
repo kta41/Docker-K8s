@@ -16,6 +16,11 @@ El stack se compone de tres capas principales diseñadas para trabajar en armon�
 2.  **Orquestador de Modelos (Middleware):** [LiteLLM](https://github.com/BerriAI/litellm), que actúa como proxy para gestionar múltiples modelos y proveedores.
 3.  **Persistencia (Backend):** Base de datos **PostgreSQL** para almacenar chats, usuarios y configuraciones.
 
+LiteLLM se publica mediante Traefik en `https://litellm.kta41.local` y expone un
+catálogo inicial con un modelo local de Ollama y ejemplos de proveedores
+externos. Las credenciales no se almacenan en Git: se inyectan desde el
+Secret `litellm-models`.
+
 
 
 ## 🛠️ Tecnologías Utilizadas
@@ -60,6 +65,26 @@ Con el cluster de postgresql activado, el ultimo paso de despliegue será genera
 ```bash
 kubectl exec -it $(kubectl get pod -l app=postgres -o name) -- psql -U admin -d litellm -c "CREATE DATABASE openwebui_db;"
 ```
+
+### Modelos de LiteLLM
+
+La Application de LiteLLM usa `litellm/overlays/prod`, que incluye el
+Certificate y el Ingress para `litellm.kta41.local`. El fichero
+`litellm/base/config.yaml` define los alias `ollama-local`, `gpt-4o-mini` y
+`claude-3-5-sonnet`. Para habilitar proveedores externos, crea el Secret en el
+namespace `default` sin incluirlo en el repositorio:
+
+```bash
+kubectl create secret generic litellm-models -n default \
+  --from-literal=openai-api-key='sk-...' \
+  --from-literal=anthropic-api-key='sk-ant-...'
+```
+
+El valor por defecto de Ollama es `http://host.docker.internal:11434`. Si
+Ollama se ejecuta en otro equipo o ese nombre no es resoluble desde los pods,
+edita `OLLAMA_API_BASE` en `litellm/base/deployment.yaml` con una URL accesible
+desde el clúster y sincroniza Argo CD. El nombre del modelo (`llama3.2`) debe
+coincidir con el modelo descargado en Ollama.
 
 ## 💡 Lecciones Aprendidas (Troubleshooting)
 

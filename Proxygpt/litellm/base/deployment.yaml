@@ -17,6 +17,11 @@ spec:
       containers:
         - name: litellm
           image: ghcr.io/berriai/litellm:main-latest
+          args:
+            - --config
+            - /app/config.yaml
+            - --port
+            - "4000"
           env:
             - name: LITELLM_MASTER_KEY
               valueFrom:
@@ -46,3 +51,26 @@ spec:
               value: "https://placeholder.kta41.local/"   # ← Changed on Kustomize
             - name: SECURE_COOKIES
               value: "true"
+            - name: OLLAMA_API_BASE
+              value: "http://host.docker.internal:11434"
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: litellm-models
+                  key: openai-api-key
+                  optional: true
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: litellm-models
+                  key: anthropic-api-key
+                  optional: true
+          volumeMounts:
+            - name: litellm-config
+              mountPath: /app/config.yaml
+              subPath: config.yaml
+              readOnly: true
+      volumes:
+        - name: litellm-config
+          configMap:
+            name: litellm-model-config
