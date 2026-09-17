@@ -1,0 +1,208 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+ENV_FILE=""
+
+usage() {
+  echo "Usage: $0 [--env-file PATH]"
+}
+
+while (($#)); do
+  case "$1" in
+    --env-file)
+      (($# >= 2)) || { echo "Missing path after --env-file" >&2; exit 2; }
+      ENV_FILE=$2
+      shift 2
+      ;;
+    -h|--help) usage; exit 0 ;;
+    *) echo "Unknown option: $1" >&2; usage >&2; exit 2 ;;
+  esac
+done
+
+if [[ -n "$ENV_FILE" ]]; then
+  [[ -f "$ENV_FILE" ]] || { echo "Environment file not found: $ENV_FILE" >&2; exit 1; }
+  set -a
+  # shellcheck disable=SC1090
+  source "$ENV_FILE"
+  set +a
+fi
+
+ask() {
+  local name=$1 prompt=$2 default=${3-} value
+  value=${!name-}
+  if [[ -z "$value" ]]; then
+    if [[ -n "$default" ]]; then
+      read -r -p "$prompt [$default]: " value
+      value=${value:-$default}
+    else
+      read -r -p "$prompt: " value
+    fi
+  fi
+  printf -v "$name" '%s' "$value"
+}
+
+ask_secret() {
+  local name=$1 prompt=$2 value
+  value=${!name-}
+  if [[ -z "$value" ]]; then
+    read -r -s -p "$prompt: " value
+    echo
+  fi
+  [[ -n "$value" ]] || { echo "$name must not be empty." >&2; exit 1; }
+  printf -v "$name" '%s' "$value"
+}
+
+b64() {
+  printf '%s' "$1" | base64 | tr -d '\n'
+}
+
+echo "Dependency check (answer these before any cluster changes)."
+ask ARGOCD_EXISTS "Does Argo CD already exist? (yes/no)" "yes"
+ask TRAEFIK_EXISTS "Does Traefik already exist? (yes/no)" "yes"
+ask CERT_MANAGER_EXISTS "Does cert-manager already exist? (yes/no)" "yes"
+[[ "$ARGOCD_EXISTS" =~ ^([Yy][Ee][Ss]|[Yy])$ ]] ||
+  { echo "Argo CD is required to apply the existing Application manifests; stopping safely." >&2; exit 1; }
+
+command -v kubectl >/dev/null 2>&1 || { echo "kubectl is required." >&2; exit 1; }
+command -v python3 >/dev/null 2>&1 || { echo "python3 is required." >&2; exit 1; }
+kubectl version --client >/dev/null || { echo "kubectl client validation failed." >&2; exit 1; }
+kubectl cluster-info >/dev/null 2>&1 ||
+  { echo "kubectl cannot reach a cluster (check KUBECONFIG/context)." >&2; exit 1; }
+
+ask LITELLM_DOMAIN "LiteLLM domain" "litellm.kta41.local"
+ask OPENWEBUI_DOMAIN "Open WebUI domain" "ia.kta41.local"
+ask GIT_PUSH "Push generated domain configuration to the Git remote? (yes/no)" "no"
+ask_secret POSTGRES_PASSWORD "PostgreSQL password"
+ask_secret LITELLM_MASTER_KEY "LiteLLM master key"
+ask_secret LITELLM_UI_PASSWORD "LiteLLM UI password"
+ask_secret LITELLM_SALT_KEY "LiteLLM salt key (keep this unchanged)"
+if [[ -z "${OPENWEBUI_PROXY_KEY-}" ]]; then
+  OPENWEBUI_PROXY_KEY="$LITELLM_MASTER_KEY"
+fi
+ask MODEL_PROVIDER "Model provider (none/openai/anthropic/both)" "none"
+case "$MODEL_PROVIDER" in
+  none) ;;
+  openai|both) ask_secret OPENAI_API_KEY "OpenAI API key" ;;
+  anthropic|both) ask_secret ANTHROPIC_API_KEY "Anthropic API key" ;;
+  *) echo "MODEL_PROVIDER must be none, openai, anthropic, or both." >&2; exit 1 ;;
+esac
+
+valid_domain() {
+  [[ "$1" =~ ^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$ ]]
+}
+valid_domain "$LITELLM_DOMAIN" || { echo "Invalid LiteLLM domain: $LITELLM_DOMAIN" >&2; exit 1; }
+valid_domain "$OPENWEBUI_DOMAIN" || { echo "Invalid Open WebUI domain: $OPENWEBUI_DOMAIN" >&2; exit 1; }
+
+replace_pattern() {
+  local file=$1 pattern=$2 replacement=$3
+  python3 - "$file" "$pattern" "$replacement" <<'PY'
+import pathlib
+import re
+import sys
+
+path, pattern, replacement = sys.argv[1:]
+text = pathlib.Path(path).read_text()
+updated, count = re.subn(pattern, replacement, text, flags=re.MULTILINE)
+if count == 0:
+    raise SystemExit(f"expected pattern not found in {path}: {pattern}")
+pathlib.Path(path).write_text(updated)
+PY
+}
+
+replace_pattern "$ROOT_DIR/Proxygpt/litellm/overlays/prod/kustomization.yaml" \
+  'full_domain=[^[:space:]]+' "full_domain=$LITELLM_DOMAIN"
+replace_pattern "$ROOT_DIR/Proxygpt/litellm/overlays/prod/ingress.yaml" \
+  'litellm\.[a-z0-9.-]+' "$LITELLM_DOMAIN"
+replace_pattern "$ROOT_DIR/Proxygpt/openwebui/overlays/prod/kustomization.yaml" \
+  'full_domain=[^[:space:]]+' "full_domain=$OPENWEBUI_DOMAIN"
+replace_pattern "$ROOT_DIR/Proxygpt/openwebui/overlays/prod/ingress.yaml" \
+  'ia\.[a-z0-9.-]+' "$OPENWEBUI_DOMAIN"
+replace_pattern "$ROOT_DIR/Proxygpt/openwebui/overlays/prod/cert.yaml" \
+  'ia\.[a-z0-9.-]+' "$OPENWEBUI_DOMAIN"
+
+echo "Applying application secrets (values are sent only to the Kubernetes API)."
+kubectl apply -f - <<EOF
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-auth
+  namespace: default
+type: Opaque
+data:
+  postgres-password: $(b64 "$POSTGRES_PASSWORD")
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: litellm-auth
+  namespace: default
+type: Opaque
+data:
+  master-key: $(b64 "$LITELLM_MASTER_KEY")
+  ui-password: $(b64 "$LITELLM_UI_PASSWORD")
+  salt-key: $(b64 "$LITELLM_SALT_KEY")
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: openwebui-auth
+  namespace: default
+type: Opaque
+data:
+  proxy-key: $(b64 "$OPENWEBUI_PROXY_KEY")
+EOF
+
+if [[ "$MODEL_PROVIDER" != none ]]; then
+  {
+    cat <<EOF
+apiVersion: v1
+kind: Secret
+metadata:
+  name: litellm-models
+  namespace: default
+type: Opaque
+data:
+EOF
+    [[ "$MODEL_PROVIDER" == openai || "$MODEL_PROVIDER" == both ]] &&
+      printf '  openai-api-key: %s\n' "$(b64 "$OPENAI_API_KEY")"
+    [[ "$MODEL_PROVIDER" == anthropic || "$MODEL_PROVIDER" == both ]] &&
+      printf '  anthropic-api-key: %s\n' "$(b64 "$ANTHROPIC_API_KEY")"
+  } | kubectl apply -f -
+fi
+
+if [[ ! "$TRAEFIK_EXISTS" =~ ^([Yy][Ee][Ss]|[Yy])$ ]]; then
+  echo "Traefik was reported absent; its existing Argo CD Application will be submitted."
+fi
+if [[ ! "$CERT_MANAGER_EXISTS" =~ ^([Yy][Ee][Ss]|[Yy])$ ]]; then
+  echo "cert-manager was reported absent; install it before certificates can become Ready."
+fi
+
+if ! kubectl kustomize "$ROOT_DIR/Proxygpt/litellm/overlays/prod" >/dev/null ||
+   ! kubectl kustomize "$ROOT_DIR/Proxygpt/openwebui/overlays/prod" >/dev/null; then
+  echo "Generated overlays failed Kustomize validation; aborting before Argo CD changes." >&2
+  exit 1
+fi
+
+CUSTOM_DOMAINS=false
+if [[ "$LITELLM_DOMAIN" != "litellm.kta41.local" || "$OPENWEBUI_DOMAIN" != "ia.kta41.local" ]]; then
+  CUSTOM_DOMAINS=true
+fi
+
+if [[ "$GIT_PUSH" =~ ^([Yy][Ee][Ss]|[Yy])$ ]]; then
+  git -C "$ROOT_DIR" add Proxygpt/litellm/overlays/prod Proxygpt/openwebui/overlays/prod
+  git -C "$ROOT_DIR" commit -m "Configure AI stack domains"
+  git -C "$ROOT_DIR" push
+elif [[ "$CUSTOM_DOMAINS" == true ]]; then
+  echo "Domain overlays were updated locally. Commit and push them before Argo CD can use them." >&2
+  echo "Secrets were created, but Applications were not applied to avoid syncing old domains." >&2
+  exit 1
+fi
+
+echo "Applying existing Argo CD Application manifests (no project manifests are changed)."
+find "$ROOT_DIR/Proxygpt/argocd" "$ROOT_DIR/Infrastructure" -type f -name '*app.yaml' -print0 |
+  while IFS= read -r -d '' manifest; do
+    kubectl apply -f "$manifest"
+  done
+echo "Selected domains: LiteLLM=$LITELLM_DOMAIN OpenWebUI=$OPENWEBUI_DOMAIN"
+echo "Installation submitted. Argo CD will reconcile the Applications."

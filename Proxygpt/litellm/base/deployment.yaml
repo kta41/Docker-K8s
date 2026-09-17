@@ -28,6 +28,11 @@ spec:
                 secretKeyRef:
                   name: litellm-auth
                   key: master-key
+            - name: LITELLM_SALT_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: litellm-auth
+                  key: salt-key
             - name: UI_PASSWORD
               valueFrom:
                 secretKeyRef:

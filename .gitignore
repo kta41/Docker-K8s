@@ -2,3 +2,4 @@
 Infrastructure/CertManager/CA/secret/
 Infrastructure/CertManager/CA/*.key
 Infrastructure/CertManager/CA/*-secret.yaml
+.env
