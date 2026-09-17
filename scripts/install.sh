@@ -3,6 +3,9 @@ set -Eeuo pipefail
 
 ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 ENV_FILE=""
+INFRASTRUCTURE_EXISTS=""
+ARGOCD_VERSION="${ARGOCD_VERSION:-v2.13.3}"
+CERT_MANAGER_VERSION="${CERT_MANAGER_VERSION:-v1.16.2}"
 
 usage() {
   echo "Usage: $0 [--env-file PATH]"
@@ -33,9 +36,14 @@ ask() {
   value=${!name-}
   if [[ -z "$value" ]]; then
     if [[ -n "$default" ]]; then
+      if [[ ! -t 0 ]]; then
+        printf -v "$name" '%s' "$default"
+        return
+      fi
       read -r -p "$prompt [$default]: " value
       value=${value:-$default}
     else
+      [[ -t 0 ]] || { echo "$name is required in non-interactive mode." >&2; exit 2; }
       read -r -p "$prompt: " value
     fi
   fi
@@ -57,12 +65,8 @@ b64() {
   printf '%s' "$1" | base64 | tr -d '\n'
 }
 
-echo "Dependency check (answer these before any cluster changes)."
-ask ARGOCD_EXISTS "Does Argo CD already exist? (yes/no)" "yes"
-ask TRAEFIK_EXISTS "Does Traefik already exist? (yes/no)" "yes"
-ask CERT_MANAGER_EXISTS "Does cert-manager already exist? (yes/no)" "yes"
-[[ "$ARGOCD_EXISTS" =~ ^([Yy][Ee][Ss]|[Yy])$ ]] ||
-  { echo "Argo CD is required to apply the existing Application manifests; stopping safely." >&2; exit 1; }
+echo "Dependency check (answer this before any cluster changes)."
+ask INFRASTRUCTURE_EXISTS "Does Argo CD, Traefik and cert-manager already exist? (yes/no)" "yes"
 
 command -v kubectl >/dev/null 2>&1 || { echo "kubectl is required." >&2; exit 1; }
 command -v python3 >/dev/null 2>&1 || { echo "python3 is required." >&2; exit 1; }
@@ -94,6 +98,19 @@ valid_domain() {
 valid_domain "$LITELLM_DOMAIN" || { echo "Invalid LiteLLM domain: $LITELLM_DOMAIN" >&2; exit 1; }
 valid_domain "$OPENWEBUI_DOMAIN" || { echo "Invalid Open WebUI domain: $OPENWEBUI_DOMAIN" >&2; exit 1; }
 
+if [[ "$INFRASTRUCTURE_EXISTS" =~ ^([Nn][Oo]|[Nn])$ ]]; then
+  echo "Installing Argo CD and cert-manager; Traefik will be reconciled by Argo CD."
+  kubectl apply -f "https://raw.githubusercontent.com/argoproj/argo-cd/${ARGOCD_VERSION}/manifests/install.yaml"
+  kubectl create namespace cert-manager --dry-run=client -o yaml | kubectl apply -f -
+  kubectl apply -f "https://github.com/cert-manager/cert-manager/releases/download/${CERT_MANAGER_VERSION}/cert-manager.yaml"
+  kubectl rollout status deployment/argocd-server -n argocd --timeout=10m
+  kubectl rollout status deployment/cert-manager -n cert-manager --timeout=10m
+  kubectl rollout status deployment/cert-manager-webhook -n cert-manager --timeout=10m
+  kubectl rollout status deployment/cert-manager-cainjector -n cert-manager --timeout=10m
+else
+  echo "Using existing Argo CD, Traefik and cert-manager."
+fi
+
 replace_pattern() {
   local file=$1 pattern=$2 replacement=$3
   python3 - "$file" "$pattern" "$replacement" <<'PY'
@@ -111,11 +128,11 @@ PY
 }
 
 replace_pattern "$ROOT_DIR/Proxygpt/litellm/overlays/prod/kustomization.yaml" \
-  'full_domain=[^[:space:]]+' "full_domain=$LITELLM_DOMAIN"
+  'full_domain=\S+' "full_domain=$LITELLM_DOMAIN"
 replace_pattern "$ROOT_DIR/Proxygpt/litellm/overlays/prod/ingress.yaml" \
   'litellm\.[a-z0-9.-]+' "$LITELLM_DOMAIN"
 replace_pattern "$ROOT_DIR/Proxygpt/openwebui/overlays/prod/kustomization.yaml" \
-  'full_domain=[^[:space:]]+' "full_domain=$OPENWEBUI_DOMAIN"
+  'full_domain=\S+' "full_domain=$OPENWEBUI_DOMAIN"
 replace_pattern "$ROOT_DIR/Proxygpt/openwebui/overlays/prod/ingress.yaml" \
   'ia\.[a-z0-9.-]+' "$OPENWEBUI_DOMAIN"
 replace_pattern "$ROOT_DIR/Proxygpt/openwebui/overlays/prod/cert.yaml" \
@@ -169,13 +186,6 @@ EOF
     [[ "$MODEL_PROVIDER" == anthropic || "$MODEL_PROVIDER" == both ]] &&
       printf '  anthropic-api-key: %s\n' "$(b64 "$ANTHROPIC_API_KEY")"
   } | kubectl apply -f -
-fi
-
-if [[ ! "$TRAEFIK_EXISTS" =~ ^([Yy][Ee][Ss]|[Yy])$ ]]; then
-  echo "Traefik was reported absent; its existing Argo CD Application will be submitted."
-fi
-if [[ ! "$CERT_MANAGER_EXISTS" =~ ^([Yy][Ee][Ss]|[Yy])$ ]]; then
-  echo "cert-manager was reported absent; install it before certificates can become Ready."
 fi
 
 if ! kubectl kustomize "$ROOT_DIR/Proxygpt/litellm/overlays/prod" >/dev/null ||

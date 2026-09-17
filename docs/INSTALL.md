@@ -8,9 +8,9 @@ existing Secrets unless Kubernetes applies the explicitly named Secret.
 ## Prerequisites
 
 - A reachable Kubernetes cluster and a configured `kubectl` context.
-- Argo CD installed in the `argocd` namespace.
-- Traefik and cert-manager installed (the installer warns if either is
-  reported missing; it does not install third-party controllers).
+- `kubectl` with permission to create cluster resources.
+- An existing `ClusterIssuer` and CA Secret if your overlays use the internal
+  CA (`kta-ca-issuer` and `kta-root-ca` by default).
 
 ## Usage
 
@@ -23,11 +23,16 @@ scripts/install.sh --env-file .env
 ```
 
 Without `--env-file`, the installer prompts for every value. It first asks
-whether Argo CD, Traefik, and cert-manager already exist, then validates
-`kubectl`, asks for domains, credentials, and model-provider keys, and applies
-Secrets with `kubectl apply`. Secret values are never written to this
-repository. The provider choice can be `none`, `openai`, `anthropic`, or
-`both`.
+whether Argo CD, Traefik, and cert-manager already exist. If the answer is
+`no`, it installs pinned Argo CD and cert-manager releases and then lets Argo
+CD reconcile Traefik. It validates `kubectl`, asks for domains, credentials,
+and model-provider keys, and applies Secrets with `kubectl apply`. Secret
+values are never written to this repository. The provider choice can be
+`none`, `openai`, `anthropic`, or `both`.
+
+When using the internal TLS overlays, the CA Secret and `ClusterIssuer` still
+need to be provisioned separately; the installer does not generate or replace
+your CA.
 
 `.env` is local configuration containing secrets and must remain untracked;
 only `.env.example` belongs in Git. The installer updates the tracked
