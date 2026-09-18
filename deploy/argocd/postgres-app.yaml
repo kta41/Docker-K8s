@@ -6,9 +6,9 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/kta41/Docker-K8s.git
-    path: Proxygpt/postgres/base
-    targetRevision: feat/postgres-auto-init
+    repoURL: https://github.com/kta41/ProxyGPT.git
+    path: deploy/postgres/base
+    targetRevision: main
     kustomize: {}
   destination:
     server: https://kubernetes.default.svc

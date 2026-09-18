@@ -6,7 +6,7 @@ this repository. Open WebUI workspace content is maintained in the separate
 
 ## Ownership
 
-- `Proxygpt/litellm/base/config.yaml`: LiteLLM models, routing and proxy
+- `deploy/litellm/base/config.yaml`: LiteLLM models, routing and proxy
   settings.
 - `../openwebui-ai-config/models/*.json`: Open WebUI custom models, including
   system prompts, tools, knowledge bases and permissions.

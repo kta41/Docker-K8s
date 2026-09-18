@@ -173,18 +173,18 @@ PY
 }
 
 replace_domain \
-  "$ROOT_DIR/Proxygpt/litellm/overlays/prod/kustomization.yaml" \
-  "$ROOT_DIR/Proxygpt/litellm/overlays/prod/ingress.yaml" \
-  "$ROOT_DIR/Proxygpt/litellm/overlays/prod/cert.yaml" \
+  "$ROOT_DIR/deploy/litellm/overlays/prod/kustomization.yaml" \
+  "$ROOT_DIR/deploy/litellm/overlays/prod/ingress.yaml" \
+  "$ROOT_DIR/deploy/litellm/overlays/prod/cert.yaml" \
   "$LITELLM_DOMAIN"
 replace_domain \
-  "$ROOT_DIR/Proxygpt/openwebui/overlays/prod/kustomization.yaml" \
-  "$ROOT_DIR/Proxygpt/openwebui/overlays/prod/ingress.yaml" \
-  "$ROOT_DIR/Proxygpt/openwebui/overlays/prod/cert.yaml" \
+  "$ROOT_DIR/deploy/openwebui/overlays/prod/kustomization.yaml" \
+  "$ROOT_DIR/deploy/openwebui/overlays/prod/ingress.yaml" \
+  "$ROOT_DIR/deploy/openwebui/overlays/prod/cert.yaml" \
   "$OPENWEBUI_DOMAIN"
 
-if ! kubectl kustomize "$ROOT_DIR/Proxygpt/litellm/overlays/prod" >/dev/null ||
-   ! kubectl kustomize "$ROOT_DIR/Proxygpt/openwebui/overlays/prod" >/dev/null; then
+if ! kubectl kustomize "$ROOT_DIR/deploy/litellm/overlays/prod" >/dev/null ||
+   ! kubectl kustomize "$ROOT_DIR/deploy/openwebui/overlays/prod" >/dev/null; then
   echo "Generated overlays failed Kustomize validation; aborting before cluster changes." >&2
   exit 1
 fi
@@ -245,7 +245,7 @@ if [[ "$LITELLM_DOMAIN" != "litellm.kta41.local" || "$OPENWEBUI_DOMAIN" != "ia.k
 fi
 
 if [[ "$GIT_PUSH" =~ ^([Yy][Ee][Ss]|[Yy])$ ]]; then
-  git -C "$ROOT_DIR" add Proxygpt/litellm/overlays/prod Proxygpt/openwebui/overlays/prod
+  git -C "$ROOT_DIR" add deploy/litellm/overlays/prod deploy/openwebui/overlays/prod
   git -C "$ROOT_DIR" commit -m "Configure AI stack domains"
   git -C "$ROOT_DIR" push
 elif [[ "$CUSTOM_DOMAINS" == true ]]; then
@@ -255,7 +255,7 @@ elif [[ "$CUSTOM_DOMAINS" == true ]]; then
 fi
 
 echo "Applying existing Argo CD Application manifests (no project manifests are changed)."
-find "$ROOT_DIR/Proxygpt/argocd" "$ROOT_DIR/Infrastructure" -type f -name '*app.yaml' -print0 |
+find "$ROOT_DIR/deploy/argocd" "$ROOT_DIR/Infrastructure" -type f -name '*app.yaml' -print0 |
   while IFS= read -r -d '' manifest; do
     kubectl apply -f "$manifest"
   done

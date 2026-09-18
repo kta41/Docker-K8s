@@ -8,7 +8,7 @@ Este repositorio contiene la arquitectura completa para desplegar un stack de In
 
 ## 🏗️ Arquitectura del Sistema
 
-![Estado de ArgoCD](./Proxygpt/img/dashboard.png)
+![Estado de ArgoCD](./deploy/img/dashboard.png)
 
 El stack se compone de tres capas principales diseñadas para trabajar en armonía dentro del clúster:
 
@@ -35,11 +35,37 @@ desde el Secret `litellm-models`.
 
 ```text
 .
-├── argocd/             # Manifiestos de Application para ArgoCD (GitOps)
-├── postgres/           # Base de datos (Deployment, Service, PVC)
-├── litellm/            # Proxy de modelos con configuración Kustomize
-└── openwebui/          # Interfaz web con Overlays para entorno Prod (Ingress/TLS)
+├── deploy/             # Despliegues Kubernetes y Applications de Argo CD
+│   ├── argocd/
+│   ├── postgres/
+│   ├── litellm/
+│   └── openwebui/
+├── Infrastructure/      # Argo CD, cert-manager, Traefik y Gitea
+├── docs/
+└── scripts/
 ```
+
+El repositorio se denomina **ProxyGPT**. La carpeta `deploy/` contiene los
+manifiestos del producto y evita duplicar el nombre en una ruta como
+`ProxyGPT/Proxygpt/`.
+
+### Migración del remoto y del directorio local
+
+Después de renombrar el repositorio en GitHub de `Docker-K8s` a `ProxyGPT`,
+actualiza el remoto y, si lo deseas, el directorio local:
+
+```bash
+cd /home/Kta41/Docker-K8s
+git remote set-url origin https://github.com/kta41/ProxyGPT.git
+cd /home/Kta41
+mv Docker-K8s ProxyGPT
+cd ProxyGPT
+git status --short --branch
+```
+
+Haz el cambio de nombre en GitHub antes de ejecutar `git push` con la nueva
+URL. Las Applications de Argo CD de `deploy/argocd/` ya apuntan a
+`https://github.com/kta41/ProxyGPT.git`.
 
 ## 🚀 Despliegue con GitOps
 
@@ -68,7 +94,7 @@ la primera pregunta para conservarlos.
 También se pueden aplicar manualmente los manifiestos de orquestación:
 
 ```bash
-kubectl apply -f Proxygpt/argocd/
+kubectl apply -f deploy/argocd/
 ```
 
 ArgoCD se encargará de sincronizar los recursos en el orden correcto, gestionando las dependencias y asegurando que el estado del clúster coincida con este repositorio.
@@ -189,12 +215,12 @@ El CA sólo es necesario para acceder desde la máquina local a
 ### Activar la Application de Argo CD
 
 La Application está en
-[`Proxygpt/argocd/openwebui-config-app.yaml`](Proxygpt/argocd/openwebui-config-app.yaml).
+[`deploy/argocd/openwebui-config-app.yaml`](deploy/argocd/openwebui-config-app.yaml).
 Antes de aplicarla, crea el Secret con la API key de Open WebUI usando el
 `.env` local ignorado por Git:
 
 ```bash
-cd /home/Kta41/Docker-K8s
+cd /home/Kta41/ProxyGPT
 set -a
 source .env
 set +a
@@ -235,7 +261,7 @@ unset GITHUB_READ_TOKEN
 Aplica y verifica:
 
 ```bash
-kubectl apply -f Proxygpt/argocd/openwebui-config-app.yaml
+kubectl apply -f deploy/argocd/openwebui-config-app.yaml
 kubectl get application openwebui-config -n argocd
 kubectl get jobs,pods -n default -l app=openwebui-model-sync
 ```

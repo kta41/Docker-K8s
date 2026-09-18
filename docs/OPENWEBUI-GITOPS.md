@@ -8,11 +8,11 @@ el certificado CA.
 
 ## 1. Crear el Secret de la API key
 
-Desde `/home/Kta41/Docker-K8s`, carga el `.env` local y crea el Secret sin
+Desde `/home/Kta41/ProxyGPT`, carga el `.env` local y crea el Secret sin
 imprimir la clave:
 
 ```bash
-cd /home/Kta41/Docker-K8s
+cd /home/Kta41/ProxyGPT
 set -a
 source .env
 set +a
@@ -59,10 +59,10 @@ kubectl logs -n argocd deployment/argocd-repo-server --tail=100
 ## 3. Crear la Application
 
 La Application ya está en
-`Proxygpt/argocd/openwebui-config-app.yaml`. Aplícala una vez:
+`deploy/argocd/openwebui-config-app.yaml`. Aplícala una vez:
 
 ```bash
-kubectl apply -f Proxygpt/argocd/openwebui-config-app.yaml
+kubectl apply -f deploy/argocd/openwebui-config-app.yaml
 ```
 
 Comprueba el estado:
