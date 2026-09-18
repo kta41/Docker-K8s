@@ -1,7 +1,16 @@
 model_list:
-  - model_name: ollama-local
+  - model_name: qwen3-14b
     litellm_params:
-      model: ollama_chat/mistral-nemo:12b
+      model: ollama_chat/qwen3:14b
+      api_base: os.environ/OLLAMA_API_BASE
+    model_info:
+      supports_function_calling: true
+      supports_parallel_function_calling: true
+      supports_tool_choice: true
+
+  - model_name: qwen3-30b
+    litellm_params:
+      model: ollama_chat/qwen3:30b
       api_base: os.environ/OLLAMA_API_BASE
     model_info:
       supports_function_calling: true

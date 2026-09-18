@@ -82,10 +82,11 @@ kubectl create secret generic litellm-models -n default \
 
 LiteLLM usa la red del host (`hostNetwork`) y accede a Ollama mediante
 `http://127.0.0.1:11435`. El puerto 11435 evita el `portproxy` de Windows que
-ocupa el 11434. El alias usa el adaptador `ollama_chat`, necesario para
-preservar las llamadas de herramientas cuando Open WebUI transmite la
-respuesta. El nombre del modelo (`mistral-nemo:12b`) debe coincidir con el
-modelo descargado en Ollama.
+ocupa el 11434. Los alias `qwen3-14b` y `qwen3-30b` usan el adaptador
+`ollama_chat`, necesario para preservar las llamadas de herramientas cuando
+Open WebUI transmite la respuesta. Ollama está configurado para mantener un
+solo modelo generativo cargado a la vez; al cambiar de modelo, descarga el
+anterior antes de cargar el nuevo.
 
 ## 💡 Lecciones Aprendidas (Troubleshooting)
 
