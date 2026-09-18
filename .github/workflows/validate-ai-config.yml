@@ -1,0 +1,34 @@
+name: Validate AI configuration
+
+on:
+  pull_request:
+    paths:
+      - "Proxygpt/litellm/**"
+      - "scripts/sync-openwebui-config.sh"
+      - "docs/CONFIG-GITOPS.md"
+  push:
+    branches: [main, "feat/**"]
+    paths:
+      - "Proxygpt/litellm/**"
+      - "scripts/sync-openwebui-config.sh"
+      - "docs/CONFIG-GITOPS.md"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate LiteLLM YAML
+        run: |
+          python3 - <<'PY'
+          import pathlib
+          import sys
+          try:
+              import yaml
+          except ImportError:
+              print("PyYAML is required by the runner image", file=sys.stderr)
+              raise
+          yaml.safe_load(pathlib.Path("Proxygpt/litellm/base/config.yaml").read_text())
+          PY
+      - name: Check synchronizer syntax
+        run: bash -n scripts/sync-openwebui-config.sh
