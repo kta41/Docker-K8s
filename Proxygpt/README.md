@@ -80,11 +80,10 @@ kubectl create secret generic litellm-models -n default \
   --from-literal=anthropic-api-key='sk-ant-...'
 ```
 
-El valor por defecto de Ollama es `http://host.docker.internal:11434`. Si
-Ollama se ejecuta en otro equipo o ese nombre no es resoluble desde los pods,
-edita `OLLAMA_API_BASE` en `litellm/base/deployment.yaml` con una URL accesible
-desde el clúster y sincroniza Argo CD. El nombre del modelo (`llama3.2`) debe
-coincidir con el modelo descargado en Ollama.
+LiteLLM usa `http://192.168.1.141:11434` para acceder a Ollama en el host
+Windows/WSL2. Si la IP del host cambia, actualiza `OLLAMA_API_BASE` en
+`litellm/base/deployment.yaml` y sincroniza Argo CD. El nombre del modelo
+(`llama3.2`) debe coincidir con el modelo descargado en Ollama.
 
 ## 💡 Lecciones Aprendidas (Troubleshooting)
 
