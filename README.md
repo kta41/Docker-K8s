@@ -8,7 +8,7 @@ Este repositorio contiene la arquitectura completa para desplegar un stack de In
 
 ## 🏗️ Arquitectura del Sistema
 
-![Estado de ArgoCD](./img/dashboard.png)
+![Estado de ArgoCD](./Proxygpt/img/dashboard.png)
 
 El stack se compone de tres capas principales diseñadas para trabajar en armonía dentro del clúster:
 
@@ -184,7 +184,7 @@ El CA sólo es necesario para acceder desde la máquina local a
 ### Activar la Application de Argo CD
 
 La Application está en
-[`argocd/openwebui-config-app.yaml`](argocd/openwebui-config-app.yaml).
+[`Proxygpt/argocd/openwebui-config-app.yaml`](Proxygpt/argocd/openwebui-config-app.yaml).
 Antes de aplicarla, crea el Secret con la API key de Open WebUI usando el
 `.env` local ignorado por Git:
 
@@ -280,9 +280,9 @@ El Job de Argo CD no necesita este CA porque usa el Service interno HTTP.
 
 ## Documentación relacionada
 
-- [Guía completa de instalación](../docs/INSTALL.md)
-- [Contrato de configuración GitOps](../docs/CONFIG-GITOPS.md)
-- [Configuración GitOps de Open WebUI](../docs/OPENWEBUI-GITOPS.md)
+- [Guía completa de instalación](docs/INSTALL.md)
+- [Contrato de configuración GitOps](docs/CONFIG-GITOPS.md)
+- [Configuración GitOps de Open WebUI](docs/OPENWEBUI-GITOPS.md)
 - [Repositorio de configuración Open WebUI](https://github.com/kta41/openwebui-ai-config)
 - [Documentación de Open WebUI](https://docs.openwebui.com/)
 - [Documentación de LiteLLM](https://docs.litellm.ai/)
