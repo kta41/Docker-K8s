@@ -3,6 +3,10 @@ model_list:
     litellm_params:
       model: ollama/llama3.1
       api_base: os.environ/OLLAMA_API_BASE
+    model_info:
+      supports_function_calling: true
+      supports_parallel_function_calling: true
+      supports_tool_choice: true
 
   - model_name: gpt-4o-mini
     litellm_params:
