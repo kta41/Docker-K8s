@@ -117,31 +117,36 @@ curl -fsS http://127.0.0.1:11435/api/pull -d '{"model":"qwen3:14b"}'
 curl -fsS http://127.0.0.1:11435/api/pull -d '{"model":"qwen3:30b"}'
 ```
 
-## 💡 Lecciones Aprendidas (Troubleshooting)
+## PostgreSQL y persistencia
 
-Durante el desarrollo, se resolvieron retos técnicos críticos, destacando:
+PostgreSQL es el backend compartido del stack. LiteLLM utiliza la base
+`litellm` y Open WebUI utiliza `openwebui_db`. El instalador crea los Secrets
+de PostgreSQL y la instalación inicial requiere crear la base de Open WebUI
+si todavía no existe:
 
-    Persistencia Inmutable: Resolución de conflictos en la inmutabilidad de los PersistentVolumeClaims (PVC) al separar la gestión del almacenamiento de la lógica de aplicación en ArgoCD.
+```bash
+kubectl exec -it $(kubectl get pod -l app=postgres -o name) -- \
+  psql -U admin -d litellm -c "CREATE DATABASE openwebui_db;"
+```
 
-    GitOps Workflow: Migración de configuraciones estáticas a un flujo dinámico con Kustomize, permitiendo la reutilización de código entre bases y parches de producción.
+Los PVCs de PostgreSQL y Open WebUI son persistentes y no deben eliminarse
+como parte de una sincronización normal de Argo CD.
 
-    Seguridad de Secretos: Implementación de inyección de secretos en memoria para evitar la exposición de credenciales en el historial de Git.
+## Evolución del stack
 
-## Fix Red WSL2 (Timeout Descargas)
-Si los pods no tienen salida a internet o fallan los DNS en WSL2:
+La rama inicial `feat/postgres-auto-init` consolidó el despliegue de
+PostgreSQL, LiteLLM y Open WebUI con Argo CD, cert-manager, Traefik, Kustomize
+y un instalador parametrizable. También incorporó:
 
-1. Cambiar Flannel a Host Gateway:
-`echo "flannel-backend: host-gw" | sudo tee -a /etc/rancher/k3s/config.yaml`
+- Overlays de dominio y certificados para LiteLLM y Open WebUI.
+- Inyección de secretos sin guardarlos en Git.
+- Validación de Ollama y de los modelos Qwen3 antes del despliegue.
+- Acceso de LiteLLM al Ollama del host mediante `hostNetwork`.
+- Compatibilidad con llamadas de herramientas y streaming de Ollama.
 
-2. Usar DNS externos puros:
-`echo "nameserver 8.8.8.8" | sudo tee /etc/rancher/k3s/resolv.conf`
-`echo "resolv-conf: /etc/rancher/k3s/resolv.conf" | sudo tee -a /etc/rancher/k3s/config.yaml`
-
-3. Purgar y reiniciar:
-`sudo systemctl stop k3s`
-`sudo ip link delete cni0`
-`sudo ip link delete flannel.1`
-`sudo systemctl start k3s`
+Esta rama añade el segundo repositorio `openwebui-ai-config`, la Application
+de Argo CD y el Sync Hook Job para sincronizar modelos personalizados y
+system prompts mediante la API oficial de Open WebUI.
 
 ## Configuración versionada de Open WebUI
 
@@ -287,9 +292,103 @@ El Job de Argo CD no necesita este CA porque usa el Service interno HTTP.
 - [Documentación de Open WebUI](https://docs.openwebui.com/)
 - [Documentación de LiteLLM](https://docs.litellm.ai/)
 
-## Seguridad
+## Troubleshooting y lecciones aprendidas
 
-Nunca publicar `.env`, API keys, tokens de GitHub, `LITELLM_MASTER_KEY`,
-`LITELLM_SALT_KEY`, claves de proveedores, JWT, cookies, sesiones, `tls.key` o
-dumps de PostgreSQL. Las Functions y Tools de Open WebUI ejecutan código en el
+### Persistencia y PostgreSQL
+
+- PostgreSQL mantiene la persistencia de LiteLLM y Open WebUI mediante PVCs.
+- La base `openwebui_db` debe existir antes de que Open WebUI arranque con
+  `DATABASE_URL` apuntando a PostgreSQL.
+- Los PVCs son recursos persistentes: no deben recrearse ni modificarse de
+  forma destructiva durante una sincronización de Argo CD.
+- Los cambios de almacenamiento deben separarse de los cambios de aplicación.
+
+### Argo CD, K3s y red
+
+- Argo CD sincroniza manifiestos desde Git y Kustomize compone bases y overlays.
+- `argocd-repo-server` usa `hostNetwork: true` y
+  `ClusterFirstWithHostNet` para evitar problemas de MTU, checksum offloading
+  y DNS en WSL2 al descargar repositorios grandes.
+- Traefik y cert-manager se despliegan mediante Applications de Argo CD.
+- La Application de Open WebUI debe apuntar a la ruta Git correcta dentro de
+  este repositorio, nunca a una ruta local del nodo.
+
+### WSL2: timeouts, DNS y Flannel
+
+Si los pods no tienen salida a Internet o fallan los DNS en WSL2:
+
+1. Cambiar Flannel a host gateway:
+
+   ```bash
+   echo "flannel-backend: host-gw" | sudo tee -a /etc/rancher/k3s/config.yaml
+   ```
+
+2. Usar una resolución DNS explícita:
+
+   ```bash
+   echo "nameserver 8.8.8.8" | sudo tee -a /etc/rancher/k3s/resolv.conf
+   echo "resolv-conf: /etc/rancher/k3s/resolv.conf" | sudo tee -a /etc/rancher/k3s/config.yaml
+   ```
+
+3. Reiniciar únicamente después de comprobar las interfaces existentes:
+
+   ```bash
+   sudo systemctl stop k3s
+   sudo ip link delete cni0
+   sudo ip link delete flannel.1
+   sudo systemctl start k3s
+   ```
+
+### Ollama y modelos Qwen3
+
+- LiteLLM accede a Ollama mediante `hostNetwork` en
+  `http://127.0.0.1:11435`.
+- El puerto 11435 evita el conflicto del portproxy de Windows que ocupa el
+  puerto 11434.
+- `ollama_chat` conserva las llamadas de herramientas durante el streaming.
+- Se anuncian capacidades de function calling, parallel function calling y
+  tool choice para los alias Qwen3.
+- Para limitar la memoria GPU/RAM a un modelo cargado: `OLLAMA_MAX_LOADED_MODELS=1`.
+- El instalador valida que `qwen3:14b` y `qwen3:30b` estén disponibles antes de
+  aplicar los recursos.
+
+Descarga manual:
+
+```bash
+curl -fsS http://127.0.0.1:11435/api/pull -d '{"model":"qwen3:14b"}'
+curl -fsS http://127.0.0.1:11435/api/pull -d '{"model":"qwen3:30b"}'
+```
+
+### TLS y CA interno
+
+El CA raíz `kta-root-ca` está en `cert-manager`. Si el cliente local muestra
+`unable to get local issuer certificate`, instala `tls.crt` en el trust store;
+no extraigas ni distribuyas `tls.key`. El Job GitOps no necesita este CA porque
+usa el Service interno HTTP de Open WebUI.
+
+### Secretos y configuración
+
+- `.env` se usa sólo localmente y está excluido por `.gitignore`.
+- Las API keys se inyectan en Kubernetes Secrets y nunca en Git.
+- `LITELLM_SALT_KEY` debe permanecer constante mientras existan credenciales
+  cifradas en la base de datos.
+- El instalador valida dominios, disponibilidad de Ollama, Kustomize y Secrets
+  antes de aplicar las Applications.
+- No se deben mezclar sin política explícita los modelos de LiteLLM definidos en
+  `config.yaml` con modelos gestionados desde la base de datos/Admin UI.
+
+### Open WebUI GitOps
+
+- `/api/v1/models/sync` requiere el esquema completo de la versión instalada,
+  incluyendo `user_id`, `is_active`, `created_at` y `updated_at`.
+- El hook obtiene el usuario administrador mediante `/api/v1/auths/`.
+- Un Job hook fallido puede bloquear una operación; elimina únicamente el Job
+  `openwebui-model-sync` y refresca la Application.
+- La reconciliación exacta elimina modelos ausentes del payload. Revisa siempre
+  el diff antes de borrar JSON del repositorio externo.
+
+### Seguridad
+
+No publicar `.env`, API keys, tokens de GitHub, JWT, cookies, claves de
+proveedores, `tls.key` ni dumps de PostgreSQL. Functions y Tools ejecutan código
 servidor y deben revisarse como código privilegiado.
