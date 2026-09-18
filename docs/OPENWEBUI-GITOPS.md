@@ -1,15 +1,14 @@
-# Activar la sincronización GitOps de Open WebUI
+# Enable Open WebUI GitOps Synchronization
 
-La Application `openwebui-config` apunta a
-`https://github.com/kta41/openwebui-ai-config.git`. El repositorio contiene
-un `ConfigMap` generado por Kustomize y un Job hook de Argo CD. El Job llama
-al Service interno `open-webui-service`, por lo que no necesita el Ingress ni
-el certificado CA.
+The `openwebui-config` Application points to
+`https://github.com/kta41/openwebui-ai-config.git`. The repository contains a
+Kustomize-generated `ConfigMap` and an Argo CD hook Job. The Job calls the
+internal `open-webui-service`, so it does not need the Ingress or CA certificate.
 
-## 1. Crear el Secret de la API key
+## 1. Create the API Key Secret
 
-Desde `/home/Kta41/ProxyGPT`, carga el `.env` local y crea el Secret sin
-imprimir la clave:
+From `/home/Kta41/ProxyGPT`, load the local `.env` and create the Secret without
+printing the key:
 
 ```bash
 cd /home/Kta41/ProxyGPT
@@ -24,13 +23,13 @@ kubectl create secret generic openwebui-sync-auth \
   -o yaml | kubectl apply -f -
 ```
 
-## 2. Registrar el repositorio privado en Argo CD
+## 2. Register the Private Repository in Argo CD
 
-Usa un Fine-grained Personal Access Token de GitHub con acceso **Contents:
-Read-only** únicamente al repositorio `kta41/openwebui-ai-config`.
+Use a GitHub fine-grained Personal Access Token with **Contents: Read-only**
+access limited to `kta41/openwebui-ai-config`.
 
 ```bash
-read -rsp "GitHub token de solo lectura: " GITHUB_READ_TOKEN
+read -rsp "Read-only GitHub token: " GITHUB_READ_TOKEN
 echo
 
 kubectl create secret generic repo-openwebui-ai-config \
@@ -38,7 +37,7 @@ kubectl create secret generic repo-openwebui-ai-config \
   --from-literal=type=git \
   --from-literal=url=https://github.com/kta41/openwebui-ai-config.git \
   --from-literal=username=kta41 \
-  --from-literal=password="$GITHUB_READ_TOKEN" \
+  --from-literal=****** \
   --dry-run=client \
   -o yaml |
   kubectl label --local -f - \
@@ -49,23 +48,23 @@ kubectl create secret generic repo-openwebui-ai-config \
 unset GITHUB_READ_TOKEN
 ```
 
-Comprueba que Argo CD reconoce el repositorio:
+Check that Argo CD recognizes the repository:
 
 ```bash
 kubectl get secret repo-openwebui-ai-config -n argocd
 kubectl logs -n argocd deployment/argocd-repo-server --tail=100
 ```
 
-## 3. Crear la Application
+## 3. Create the Application
 
-La Application ya está en
-`deploy/argocd/openwebui-config-app.yaml`. Aplícala una vez:
+The Application is already in
+`deploy/argocd/openwebui-config-app.yaml`. Apply it once:
 
 ```bash
 kubectl apply -f deploy/argocd/openwebui-config-app.yaml
 ```
 
-Comprueba el estado:
+Check its status:
 
 ```bash
 kubectl get application openwebui-config -n argocd
@@ -73,10 +72,10 @@ kubectl get jobs,pods -l app=openwebui-model-sync
 kubectl logs -n default job/openwebui-model-sync
 ```
 
-## 4. Flujo posterior
+## 4. Subsequent Workflow
 
-Cada cambio en `models/*.json` debe incluir el archivo en la lista `files` de
-`kustomization.yaml`, y después se publica normalmente:
+Every change to `models/*.json` must add the file to the `files` list in
+`kustomization.yaml`, then publish it normally:
 
 ```bash
 cd /home/Kta41/openwebui-ai-config
@@ -85,6 +84,6 @@ git commit -m "Update Open WebUI model"
 git push
 ```
 
-Argo CD detecta `main`, cambia el hash del ConfigMap y ejecuta de nuevo el
-Job hook. El Job sincroniza exactamente la lista de modelos. Un modelo
-ausente del payload se elimina de Open WebUI.
+Argo CD detects `main`, changes the ConfigMap hash, and runs the hook Job again.
+The Job synchronizes exactly the model list. A model absent from the payload is
+removed from Open WebUI.

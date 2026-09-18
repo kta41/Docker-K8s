@@ -1,58 +1,58 @@
 #  AI-Stack GitOps: LiteLLM + Open WebUI + Postgres
 
-Este repositorio contiene la arquitectura completa para desplegar un stack de Inteligencia Artificial privado y escalable en **Kubernetes**. La gestión de la infraestructura se realiza mediante un modelo **GitOps** utilizando **ArgoCD** y **Kustomize**.
+This repository contains the complete architecture for deploying a private, scalable Artificial Intelligence stack on **Kubernetes**. Infrastructure is managed through a **GitOps** model using **Argo CD** and **Kustomize**.
 
 ![Status](https://img.shields.io/badge/Status-Production--Ready-green)
 ![K8s](https://img.shields.io/badge/Kubernetes-K3s-blue)
 ![GitOps](https://img.shields.io/badge/GitOps-ArgoCD-orange)
 
-## 🏗️ Arquitectura del Sistema
+## 🏗️ System Architecture
 
-![Estado de ArgoCD](./deploy/img/dashboard.png)
+![Argo CD status](./deploy/img/dashboard.png)
 
-El stack se compone de tres capas principales diseñadas para trabajar en armonía dentro del clúster:
+The stack consists of three main layers designed to work together in the cluster:
 
-1.  **Interfaz de Usuario (Frontend):** [Open WebUI](https://github.com/open-webui/open-webui), una interfaz intuitiva para interactuar con LLMs.
-2.  **Orquestador de Modelos (Middleware):** [LiteLLM](https://github.com/BerriAI/litellm), que actúa como proxy para gestionar múltiples modelos y proveedores.
-3.  **Persistencia (Backend):** Base de datos **PostgreSQL** para almacenar chats, usuarios y configuraciones.
+1.  **User Interface (Frontend):** [Open WebUI](https://github.com/open-webui/open-webui), an intuitive interface for interacting with LLMs.
+2.  **Model Orchestrator (Middleware):** [LiteLLM](https://github.com/BerriAI/litellm), which acts as a proxy for managing multiple models and providers.
+3.  **Persistence (Backend):** **PostgreSQL** database for storing chats, users, and configuration.
 
-LiteLLM se publica mediante Traefik en `https://litellm.kta41.local` y expone
-dos modelos locales de Ollama (`qwen3-14b` y `qwen3-30b`), además de ejemplos
-de proveedores externos. Las credenciales no se almacenan en Git: se inyectan
-desde el Secret `litellm-models`.
+LiteLLM is published through Traefik at `https://litellm.kta41.local` and exposes
+two local Ollama models (`qwen3-14b` and `qwen3-30b`), along with examples
+of external providers. Credentials are not stored in Git; they are injected
+from the Secret `litellm-models`.
 
 
 
-## 🛠️ Tecnologías Utilizadas
+## 🛠️ Technologies Used
 
-* **Kubernetes (K3s):** Orquestación de contenedores.
-* **ArgoCD:** CD declarativo para sincronización automática del estado deseado.
-* **Kustomize:** Gestión de configuraciones por capas (Base y Overlays).
-* **Traefik:** Ingress Controller para la gestión del tráfico externo y TLS.
-* **Local Path Provisioner:** Persistencia de datos mediante volúmenes locales.
+* **Kubernetes (K3s):** Container orchestration.
+* **ArgoCD:** Declarative CD for automatic desired-state synchronization.
+* **Kustomize:** Layered configuration management (Base and Overlays).
+* **Traefik:** Ingress Controller for external traffic and TLS management.
+* **Local Path Provisioner:** Data persistence through local volumes.
 
-## 📁 Estructura del Repositorio
+## 📁 Repository Structure
 
 ```text
 .
-├── deploy/             # Despliegues Kubernetes y Applications de Argo CD
+├── deploy/             # Kubernetes deployments and Argo CD Applications
 │   ├── argocd/
 │   ├── postgres/
 │   ├── litellm/
 │   └── openwebui/
-├── Infrastructure/      # Argo CD, cert-manager, Traefik y Gitea
+├── Infrastructure/      # Argo CD, cert-manager, Traefik, and Gitea
 ├── docs/
 └── scripts/
 ```
 
-El repositorio se denomina **ProxyGPT**. La carpeta `deploy/` contiene los
-manifiestos del producto y evita duplicar el nombre en una ruta como
+The repository is named **ProxyGPT**. The `deploy/` directory contains the
+product manifests and avoids duplicating the name in a path such as
 `ProxyGPT/Proxygpt/`.
 
-### Migración del remoto y del directorio local
+### Migrating the remote and local directory
 
-Después de renombrar el repositorio en GitHub de `Docker-K8s` a `ProxyGPT`,
-actualiza el remoto y, si lo deseas, el directorio local:
+After renaming the repository on GitHub from `Docker-K8s` to `ProxyGPT`,
+update the remote and, if desired, the local directory:
 
 ```bash
 cd /home/Kta41/Docker-K8s
@@ -63,22 +63,22 @@ cd ProxyGPT
 git status --short --branch
 ```
 
-Haz el cambio de nombre en GitHub antes de ejecutar `git push` con la nueva
-URL. Las Applications de Argo CD de `deploy/argocd/` ya apuntan a
+Rename it on GitHub before running `git push` with the new
+URL. The Argo CD Applications in `deploy/argocd/` already point to
 `https://github.com/kta41/ProxyGPT.git`.
 
-## 🚀 Despliegue con GitOps
+## 🚀 GitOps Deployment
 
-Este proyecto está diseñado para ser desplegado instantáneamente mediante ArgoCD.
-1. Prerrequisitos
+This project is designed to be deployed instantly through Argo CD.
+1. Prerequisites
 
-    Un clúster de Kubernetes funcionando (K3s recomendado).
+    A working Kubernetes cluster (K3s recommended).
 
-    ArgoCD instalado en el namespace argocd.
+    Argo CD installed in the `argocd` namespace.
 
-2. Instalación
+2. Installation
 
-Para desplegar todo el stack, usa el instalador:
+To deploy the complete stack, use the installer:
 
 ```bash
 cp .env.example .env
@@ -86,32 +86,32 @@ chmod 700 scripts/install.sh
 scripts/install.sh --env-file .env
 ```
 
-El instalador valida que Ollama esté accesible en `http://127.0.0.1:11435` y
-que los modelos `qwen3:14b` y `qwen3:30b` estén descargados antes de aplicar
-los recursos. Si ya tienes ArgoCD, Traefik y cert-manager, responde `yes` a
-la primera pregunta para conservarlos.
+The installer verifies that Ollama is reachable at `http://127.0.0.1:11435` and
+that the models `qwen3:14b` and `qwen3:30b` are downloaded before applying
+resources. If Argo CD, Traefik, and cert-manager already exist, answer `yes` to
+the first question to keep them.
 
-También se pueden aplicar manualmente los manifiestos de orquestación:
+The orchestration manifests can also be applied manually:
 
 ```bash
 kubectl apply -f deploy/argocd/
 ```
 
-ArgoCD se encargará de sincronizar los recursos en el orden correcto, gestionando las dependencias y asegurando que el estado del clúster coincida con este repositorio.
+ArgoCD will synchronize resources in the correct order, manage dependencies, and ensure that the cluster state matches this repository.
 
-Con el cluster de postgresql activado, el ultimo paso de despliegue será generar la base de datos para OpenWeb UI: 
+When the PostgreSQL cluster is enabled, the final deployment step is to create the Open WebUI database:
 
 ```bash
 kubectl exec -it $(kubectl get pod -l app=postgres -o name) -- psql -U admin -d litellm -c "CREATE DATABASE openwebui_db;"
 ```
 
-### Modelos de LiteLLM
+### LiteLLM Models
 
-La Application de LiteLLM usa `litellm/overlays/prod`, que incluye el
-Certificate y el Ingress para `litellm.kta41.local`. El fichero
-`litellm/base/config.yaml` define los alias `ollama-local`, `gpt-4o-mini` y
-`claude-3-5-sonnet`. Para habilitar proveedores externos, crea el Secret en el
-namespace `default` sin incluirlo en el repositorio:
+The LiteLLM Application uses `litellm/overlays/prod`, which includes the
+Certificate and Ingress for `litellm.kta41.local`. The file
+`litellm/base/config.yaml` defines the aliases `ollama-local`, `gpt-4o-mini` and
+`claude-3-5-sonnet`. To enable external providers, create the Secret in the
+`default` namespace without adding it to the repository:
 
 ```bash
 kubectl create secret generic litellm-models -n default \
@@ -119,105 +119,105 @@ kubectl create secret generic litellm-models -n default \
   --from-literal=anthropic-api-key='sk-ant-...'
 ```
 
-LiteLLM usa la red del host (`hostNetwork`) y accede a Ollama mediante
-`http://127.0.0.1:11435`. El puerto 11435 evita el `portproxy` de Windows que
-ocupa el 11434. Los alias `qwen3-14b` y `qwen3-30b` usan el adaptador
-`ollama_chat`, necesario para preservar las llamadas de herramientas cuando
-Open WebUI transmite la respuesta. Ollama está configurado para mantener un
-solo modelo generativo cargado a la vez mediante
-`OLLAMA_MAX_LOADED_MODELS=1`; al cambiar de modelo, descarga el anterior antes
-de cargar el nuevo. En Windows, configúralo y reinicia Ollama:
+LiteLLM uses the host network (`hostNetwork`) and accesses Ollama through
+`http://127.0.0.1:11435`. Port 11435 avoids the Windows `portproxy` that
+occupies port 11434. The `qwen3-14b` and `qwen3-30b` aliases use the
+`ollama_chat`, which is required to preserve tool calls when
+Open WebUI streams the response. Ollama is configured to keep one
+generative model loaded at a time through
+`OLLAMA_MAX_LOADED_MODELS=1` ; when changing models, unload the previous one before
+loading the new one. On Windows, configure it and restart Ollama:
 
 ```powershell
 setx OLLAMA_MAX_LOADED_MODELS 1
 ```
 
-Después de reiniciar Ollama, selecciona `qwen3-14b` o `qwen3-30b` en Open
-WebUI. Ambos aparecen en el catálogo, pero solo el modelo utilizado queda
-cargado en memoria.
+After restarting Ollama, select `qwen3-14b` or `qwen3-30b` in Open
+WebUI. Both appear in the catalog, but only the selected model remains
+loaded in memory.
 
-Para descargar los modelos manualmente:
+To download the models manually:
 
 ```bash
 curl -fsS http://127.0.0.1:11435/api/pull -d '{"model":"qwen3:14b"}'
 curl -fsS http://127.0.0.1:11435/api/pull -d '{"model":"qwen3:30b"}'
 ```
 
-## PostgreSQL y persistencia
+## PostgreSQL and Persistence
 
-PostgreSQL es el backend compartido del stack. LiteLLM utiliza la base
-`litellm` y Open WebUI utiliza `openwebui_db`. El instalador crea los Secrets
-de PostgreSQL y la instalación inicial requiere crear la base de Open WebUI
-si todavía no existe:
+PostgreSQL is the shared backend for the stack. LiteLLM uses the
+`litellm` database, and Open WebUI uses `openwebui_db`. The installer creates the PostgreSQL Secrets
+and the initial installation requires creating the Open WebUI database
+if it does not yet exist:
 
 ```bash
 kubectl exec -it $(kubectl get pod -l app=postgres -o name) -- \
   psql -U admin -d litellm -c "CREATE DATABASE openwebui_db;"
 ```
 
-Los PVCs de PostgreSQL y Open WebUI son persistentes y no deben eliminarse
-como parte de una sincronización normal de Argo CD.
+PostgreSQL and Open WebUI PVCs are persistent and must not be deleted
+during a normal Argo CD synchronization.
 
-## Evolución del stack
+## Stack Evolution
 
-La rama inicial `feat/postgres-auto-init` consolidó el despliegue de
-PostgreSQL, LiteLLM y Open WebUI con Argo CD, cert-manager, Traefik, Kustomize
-y un instalador parametrizable. También incorporó:
+The initial branch `feat/postgres-auto-init` consolidated the deployment of
+PostgreSQL, LiteLLM, and Open WebUI with Argo CD, cert-manager, Traefik, and Kustomize,
+together with a parameterized installer. It also added:
 
-- Overlays de dominio y certificados para LiteLLM y Open WebUI.
-- Inyección de secretos sin guardarlos en Git.
-- Validación de Ollama y de los modelos Qwen3 antes del despliegue.
-- Acceso de LiteLLM al Ollama del host mediante `hostNetwork`.
-- Compatibilidad con llamadas de herramientas y streaming de Ollama.
+- Domain and certificate overlays for LiteLLM and Open WebUI.
+- Secret injection without storing secrets in Git.
+- Ollama and Qwen3 model validation before deployment.
+- LiteLLM access to host Ollama through `hostNetwork`.
+- Support for Ollama tool calls and streaming.
 
-Esta rama añade el segundo repositorio `openwebui-ai-config`, la Application
-de Argo CD y el Sync Hook Job para sincronizar modelos personalizados y
-system prompts mediante la API oficial de Open WebUI.
+This branch adds the second repository `openwebui-ai-config`, the Argo CD Application
+and Sync Hook Job to synchronize custom models and
+system prompts through the official Open WebUI API.
 
-## Configuración versionada de Open WebUI
+## Versioned Open WebUI Configuration
 
-La configuración funcional de Open WebUI se mantiene en el repositorio
-separado [`kta41/openwebui-ai-config`](https://github.com/kta41/openwebui-ai-config).
-Este repositorio de infraestructura mantiene Kubernetes, Argo CD, Kustomize,
-Secrets y la configuración declarativa de LiteLLM; el repositorio externo
-mantiene los modelos personalizados, system prompts y documentación de
+Functional Open WebUI configuration is maintained in the separate repository
+ [`kta41/openwebui-ai-config`](https://github.com/kta41/openwebui-ai-config).
+This infrastructure repository maintains Kubernetes, Argo CD, Kustomize,
+Secrets and declarative LiteLLM configuration; the external repository
+maintains custom models, system prompts, and
 Knowledge Bases.
 
 ```text
 git push openwebui-ai-config
         |
         v
-Argo CD detecta main
+Argo CD detects main
         |
         v
-Kustomize genera ConfigMap con hash
+Kustomize generates a ConfigMap with a hash
         |
         v
-Sync Hook Job usa openwebui-sync-auth
+Sync Hook Job uses openwebui-sync-auth
         |
         v
 POST /api/v1/models/sync
         |
         v
-Open WebUI actualiza sus modelos personalizados
+Open WebUI updates its custom models
 ```
 
-El Job usa el Service interno:
+The Job uses the internal Service:
 
 ```text
 http://open-webui-service.default.svc.cluster.local:8080
 ```
 
-Por ello, la sincronización GitOps no depende del certificado CA del Ingress.
-El CA sólo es necesario para acceder desde la máquina local a
+Therefore, GitOps synchronization does not depend on the Ingress CA certificate.
+The CA is only needed to access
 `https://ia.kta41.local`.
 
-### Activar la Application de Argo CD
+### Enable the Argo CD Application
 
-La Application está en
+The Application is at
 [`deploy/argocd/openwebui-config-app.yaml`](deploy/argocd/openwebui-config-app.yaml).
-Antes de aplicarla, crea el Secret con la API key de Open WebUI usando el
-`.env` local ignorado por Git:
+Before applying it, create the Open WebUI API key Secret using the
+`.env` local file ignored by Git:
 
 ```bash
 cd /home/Kta41/ProxyGPT
@@ -234,12 +234,12 @@ kubectl create secret generic openwebui-sync-auth \
 unset OPENWEBUI_API_KEY
 ```
 
-El repositorio privado también debe estar registrado en Argo CD con un
-Fine-grained Personal Access Token limitado a
-`kta41/openwebui-ai-config` y con `Contents: Read-only`:
+The private repository must also be registered in Argo CD with a
+Fine-grained Personal Access Token limited to
+`kta41/openwebui-ai-config` with `Contents: Read-only`:
 
 ```bash
-read -rsp "GitHub token de solo lectura: " GITHUB_READ_TOKEN
+read -rsp "Read-only GitHub token: " GITHUB_READ_TOKEN
 echo
 
 kubectl create secret generic repo-openwebui-ai-config \
@@ -258,7 +258,7 @@ kubectl create secret generic repo-openwebui-ai-config \
 unset GITHUB_READ_TOKEN
 ```
 
-Aplica y verifica:
+Apply and verify:
 
 ```bash
 kubectl apply -f deploy/argocd/openwebui-config-app.yaml
@@ -266,19 +266,19 @@ kubectl get application openwebui-config -n argocd
 kubectl get jobs,pods -n default -l app=openwebui-model-sync
 ```
 
-El estado esperado es `Synced`, `Healthy` y `Succeeded`.
+The expected state is `Synced`, `Healthy`, and `Succeeded`.
 
-### Modificar modelos y prompts
+### Modify Models and Prompts
 
-Edita el repositorio externo:
+Edit the external repository:
 
 ```bash
 cd /home/Kta41/openwebui-ai-config
 nano models/qwen3-14b-assistant.json
 ```
 
-Si creas un JSON nuevo, añádelo explícitamente a
-`kustomization.yaml`. Valida y publica:
+If you create a new JSON file, add it explicitly to
+`kustomization.yaml`. Validate and publish:
 
 ```bash
 python3 -m json.tool models/qwen3-14b-assistant.json >/dev/null
@@ -288,13 +288,13 @@ git commit -m "Update Open WebUI model"
 git push
 ```
 
-Argo CD detectará el commit, generará un nuevo ConfigMap y ejecutará el Job
-automáticamente. La reconciliación es exacta: los modelos ausentes del payload
-se eliminan de Open WebUI.
+Argo CD detects the commit, generates a new ConfigMap, and runs the Job
+automatically. Reconciliation is exact: models absent from the payload
+are removed from Open WebUI.
 
-### Certificado CA local
+### Local CA Certificate
 
-El CA raíz está en el Secret `kta-root-ca` del namespace `cert-manager`:
+The root CA is in the Secret `kta-root-ca` in the `cert-manager`:
 
 ```bash
 kubectl get secret kta-root-ca \
@@ -306,57 +306,57 @@ kubectl get secret kta-root-ca \
 sudo update-ca-certificates
 ```
 
-Después, `curl https://ia.kta41.local/health` debe funcionar sin `-k`.
-El Job de Argo CD no necesita este CA porque usa el Service interno HTTP.
+Afterward, `curl https://ia.kta41.local/health` must work without `-k`.
+The Argo CD Job does not need this CA because it uses the internal HTTP Service.
 
-## Documentación relacionada
+## Related Documentation
 
-- [Guía completa de instalación](docs/INSTALL.md)
-- [Contrato de configuración GitOps](docs/CONFIG-GITOPS.md)
-- [Configuración GitOps de Open WebUI](docs/OPENWEBUI-GITOPS.md)
-- [Repositorio de configuración Open WebUI](https://github.com/kta41/openwebui-ai-config)
-- [Documentación de Open WebUI](https://docs.openwebui.com/)
-- [Documentación de LiteLLM](https://docs.litellm.ai/)
+- [Complete installation guide](docs/INSTALL.md)
+- [GitOps configuration contract](docs/CONFIG-GITOPS.md)
+- [Open WebUI GitOps configuration](docs/OPENWEBUI-GITOPS.md)
+- [Open WebUI configuration repository](https://github.com/kta41/openwebui-ai-config)
+- [Open WebUI documentation](https://docs.openwebui.com/)
+- [LiteLLM documentation](https://docs.litellm.ai/)
 
-## Troubleshooting y lecciones aprendidas
+## Troubleshooting and Lessons Learned
 
-### Persistencia y PostgreSQL
+### Persistence and PostgreSQL
 
-- PostgreSQL mantiene la persistencia de LiteLLM y Open WebUI mediante PVCs.
-- La base `openwebui_db` debe existir antes de que Open WebUI arranque con
-  `DATABASE_URL` apuntando a PostgreSQL.
-- Los PVCs son recursos persistentes: no deben recrearse ni modificarse de
-  forma destructiva durante una sincronización de Argo CD.
-- Los cambios de almacenamiento deben separarse de los cambios de aplicación.
+- PostgreSQL provides persistence for LiteLLM and Open WebUI through PVCs.
+- The `openwebui_db` database must exist before Open WebUI starts with
+  `DATABASE_URL` pointing to PostgreSQL.
+- PVCs are persistent resources: they must not be recreated or modified
+  destructively during an Argo CD synchronization.
+- Storage changes must be separated from application changes.
 
-### Argo CD, K3s y red
+### Argo CD, K3s, and Networking
 
-- Argo CD sincroniza manifiestos desde Git y Kustomize compone bases y overlays.
-- `argocd-repo-server` usa `hostNetwork: true` y
-  `ClusterFirstWithHostNet` para evitar problemas de MTU, checksum offloading
-  y DNS en WSL2 al descargar repositorios grandes.
-- Traefik y cert-manager se despliegan mediante Applications de Argo CD.
-- La Application de Open WebUI debe apuntar a la ruta Git correcta dentro de
-  este repositorio, nunca a una ruta local del nodo.
+- Argo CD synchronizes manifests from Git, and Kustomize composes bases and overlays.
+- `argocd-repo-server` uses `hostNetwork: true` and
+  `ClusterFirstWithHostNet` to avoid MTU, checksum offloading
+  and DNS issues in WSL2 when downloading large repositories.
+- Traefik and cert-manager are deployed through Argo CD Applications.
+- The Open WebUI Application must point to the correct Git path inside
+  this repository, never to a local node path.
 
-### WSL2: timeouts, DNS y Flannel
+### WSL2: Timeouts, DNS, and Flannel
 
-Si los pods no tienen salida a Internet o fallan los DNS en WSL2:
+If pods cannot reach the Internet or DNS fails in WSL2:
 
-1. Cambiar Flannel a host gateway:
+1. Switch Flannel to the host gateway:
 
    ```bash
    echo "flannel-backend: host-gw" | sudo tee -a /etc/rancher/k3s/config.yaml
    ```
 
-2. Usar una resolución DNS explícita:
+2. Use explicit DNS resolution:
 
    ```bash
    echo "nameserver 8.8.8.8" | sudo tee -a /etc/rancher/k3s/resolv.conf
    echo "resolv-conf: /etc/rancher/k3s/resolv.conf" | sudo tee -a /etc/rancher/k3s/config.yaml
    ```
 
-3. Reiniciar únicamente después de comprobar las interfaces existentes:
+3. Restart only after checking the existing interfaces:
 
    ```bash
    sudo systemctl stop k3s
@@ -365,56 +365,56 @@ Si los pods no tienen salida a Internet o fallan los DNS en WSL2:
    sudo systemctl start k3s
    ```
 
-### Ollama y modelos Qwen3
+### Ollama and Qwen3 Models
 
-- LiteLLM accede a Ollama mediante `hostNetwork` en
+- LiteLLM accesses Ollama through `hostNetwork` at
   `http://127.0.0.1:11435`.
-- El puerto 11435 evita el conflicto del portproxy de Windows que ocupa el
-  puerto 11434.
-- `ollama_chat` conserva las llamadas de herramientas durante el streaming.
-- Se anuncian capacidades de function calling, parallel function calling y
-  tool choice para los alias Qwen3.
-- Para limitar la memoria GPU/RAM a un modelo cargado: `OLLAMA_MAX_LOADED_MODELS=1`.
-- El instalador valida que `qwen3:14b` y `qwen3:30b` estén disponibles antes de
-  aplicar los recursos.
+- Port 11435 avoids the Windows portproxy conflict on
+  port 11434.
+- `ollama_chat` preserves tool calls during streaming.
+- The aliases advertise function calling, parallel function calling, and
+  tool choice for the Qwen3 aliases.
+- To limit GPU/RAM memory to one loaded model: `OLLAMA_MAX_LOADED_MODELS=1`.
+- The installer verifies that `qwen3:14b` and `qwen3:30b` are available before
+  applying the resources.
 
-Descarga manual:
+Manual download:
 
 ```bash
 curl -fsS http://127.0.0.1:11435/api/pull -d '{"model":"qwen3:14b"}'
 curl -fsS http://127.0.0.1:11435/api/pull -d '{"model":"qwen3:30b"}'
 ```
 
-### TLS y CA interno
+### TLS and Internal CA
 
-El CA raíz `kta-root-ca` está en `cert-manager`. Si el cliente local muestra
-`unable to get local issuer certificate`, instala `tls.crt` en el trust store;
-no extraigas ni distribuyas `tls.key`. El Job GitOps no necesita este CA porque
-usa el Service interno HTTP de Open WebUI.
+The root CA `kta-root-ca` is in `cert-manager`. If the local client reports
+`unable to get local issuer certificate`, install `tls.crt` in the trust store;
+do not extract or distribute `tls.key`. The GitOps Job does not need this CA because
+it uses the internal Open WebUI HTTP Service.
 
-### Secretos y configuración
+### Secrets and Configuration
 
-- `.env` se usa sólo localmente y está excluido por `.gitignore`.
-- Las API keys se inyectan en Kubernetes Secrets y nunca en Git.
-- `LITELLM_SALT_KEY` debe permanecer constante mientras existan credenciales
-  cifradas en la base de datos.
-- El instalador valida dominios, disponibilidad de Ollama, Kustomize y Secrets
-  antes de aplicar las Applications.
-- No se deben mezclar sin política explícita los modelos de LiteLLM definidos en
-  `config.yaml` con modelos gestionados desde la base de datos/Admin UI.
+- `.env` is used locally only and is excluded by `.gitignore`.
+- API keys are injected into Kubernetes Secrets and never stored in Git.
+- `LITELLM_SALT_KEY` must remain constant while credentials exist
+  encrypted in the database.
+- The installer validates domains, Ollama availability, Kustomize, and Secrets
+  before applying Applications.
+- Do not mix without an explicit policy the LiteLLM models defined in
+  `config.yaml` with models managed from the database/Admin UI.
 
 ### Open WebUI GitOps
 
-- `/api/v1/models/sync` requiere el esquema completo de la versión instalada,
-  incluyendo `user_id`, `is_active`, `created_at` y `updated_at`.
-- El hook obtiene el usuario administrador mediante `/api/v1/auths/`.
-- Un Job hook fallido puede bloquear una operación; elimina únicamente el Job
-  `openwebui-model-sync` y refresca la Application.
-- La reconciliación exacta elimina modelos ausentes del payload. Revisa siempre
-  el diff antes de borrar JSON del repositorio externo.
+- `/api/v1/models/sync` requires the complete schema for the installed version,
+  including `user_id`, `is_active`, `created_at`, and `updated_at`.
+- The hook obtains the administrator user through `/api/v1/auths/`.
+- A failed hook Job can block an operation; delete only the Job
+  `openwebui-model-sync` and refresh the Application.
+- Exact reconciliation removes models absent from the payload. Always review
+  the diff before deleting JSON from the external repository.
 
-### Seguridad
+### Security
 
-No publicar `.env`, API keys, tokens de GitHub, JWT, cookies, claves de
-proveedores, `tls.key` ni dumps de PostgreSQL. Functions y Tools ejecutan código
-servidor y deben revisarse como código privilegiado.
+Do not publish `.env`, API keys, GitHub tokens, JWTs, cookies, provider keys,
+`tls.key`, or PostgreSQL dumps. Functions and Tools execute server-side code
+and must be reviewed as privileged code.
