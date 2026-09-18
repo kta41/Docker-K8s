@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+ENV_FILE="${OPENWEBUI_ENV_FILE:-$ROOT_DIR/.env}"
+
 usage() {
   cat >&2 <<'EOF'
-Usage: sync-openwebui-config.sh [--dry-run] CONFIG_REPOSITORY
+Usage: sync-openwebui-config.sh [--dry-run] [--env-file PATH] CONFIG_REPOSITORY
 
 Environment:
   OPENWEBUI_URL       Open WebUI base URL, including the scheme
@@ -13,12 +16,27 @@ EOF
 }
 
 dry_run=false
-if [[ "${1:-}" == "--dry-run" ]]; then
-  dry_run=true
-  shift
-fi
+while (($#)); do
+  case "$1" in
+    --dry-run) dry_run=true; shift ;;
+    --env-file)
+      (($# >= 2)) || usage
+      ENV_FILE=$2
+      shift 2
+      ;;
+    -h|--help) usage; exit 0 ;;
+    *) break ;;
+  esac
+done
 [[ $# -eq 1 ]] || usage
 config_repo=$1
+
+if [[ -f "$ENV_FILE" ]]; then
+  set -a
+  # shellcheck disable=SC1090
+  source "$ENV_FILE"
+  set +a
+fi
 
 : "${OPENWEBUI_URL:?OPENWEBUI_URL is required}"
 : "${OPENWEBUI_API_KEY:?OPENWEBUI_API_KEY is required}"
