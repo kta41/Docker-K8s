@@ -1,7 +1,7 @@
 model_list:
   - model_name: ollama-local
     litellm_params:
-      model: ollama/llama3.2
+      model: ollama/llama3.1
       api_base: os.environ/OLLAMA_API_BASE
 
   - model_name: gpt-4o-mini
