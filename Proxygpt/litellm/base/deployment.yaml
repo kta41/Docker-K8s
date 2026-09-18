@@ -23,7 +23,7 @@ spec:
             - --config
             - /app/config.yaml
             - --port
-            - "4000"
+            - "4001"
           env:
             - name: LITELLM_MASTER_KEY
               valueFrom:
