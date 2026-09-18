@@ -6,6 +6,8 @@ ENV_FILE=""
 INFRASTRUCTURE_EXISTS=""
 ARGOCD_VERSION="${ARGOCD_VERSION:-v2.13.3}"
 CERT_MANAGER_VERSION="${CERT_MANAGER_VERSION:-v1.16.2}"
+OLLAMA_API_BASE="${OLLAMA_API_BASE:-http://127.0.0.1:11435}"
+OLLAMA_REQUIRED_MODELS=("qwen3:14b" "qwen3:30b")
 
 usage() {
   echo "Usage: $0 [--env-file PATH]"
@@ -97,6 +99,40 @@ valid_domain() {
 }
 valid_domain "$LITELLM_DOMAIN" || { echo "Invalid LiteLLM domain: $LITELLM_DOMAIN" >&2; exit 1; }
 valid_domain "$OPENWEBUI_DOMAIN" || { echo "Invalid Open WebUI domain: $OPENWEBUI_DOMAIN" >&2; exit 1; }
+
+echo "Checking Ollama at ${OLLAMA_API_BASE}."
+OLLAMA_MODELS="$(
+  OLLAMA_API_BASE="$OLLAMA_API_BASE" python3 - <<'PY'
+import json
+import os
+import urllib.error
+import urllib.request
+
+url = os.environ["OLLAMA_API_BASE"].rstrip("/") + "/api/tags"
+try:
+    with urllib.request.urlopen(url, timeout=10) as response:
+        payload = json.load(response)
+except (OSError, ValueError, urllib.error.URLError) as error:
+    raise SystemExit(f"Cannot reach Ollama at {url}: {error}")
+
+for model in payload.get("models", []):
+    print(model.get("name", ""))
+PY
+)" || {
+  echo "Ollama is required before deploying LiteLLM." >&2
+  echo "Expected endpoint: ${OLLAMA_API_BASE}" >&2
+  exit 1
+}
+
+for required_model in "${OLLAMA_REQUIRED_MODELS[@]}"; do
+  if ! grep -Fxq "$required_model" <<<"$OLLAMA_MODELS"; then
+    echo "Required Ollama model is missing: $required_model" >&2
+    echo "Install it with: curl -fsS ${OLLAMA_API_BASE}/api/pull -d '{\"model\":\"${required_model}\"}'" >&2
+    exit 1
+  fi
+done
+echo "Ollama models available: ${OLLAMA_REQUIRED_MODELS[*]}"
+echo "Ollama must run with OLLAMA_MAX_LOADED_MODELS=1 so only the selected model stays loaded."
 
 if [[ "$INFRASTRUCTURE_EXISTS" =~ ^([Nn][Oo]|[Nn])$ ]]; then
   echo "Installing Argo CD and cert-manager; Traefik will be reconciled by Argo CD."

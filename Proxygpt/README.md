@@ -16,10 +16,10 @@ El stack se compone de tres capas principales diseñadas para trabajar en armon�
 2.  **Orquestador de Modelos (Middleware):** [LiteLLM](https://github.com/BerriAI/litellm), que actúa como proxy para gestionar múltiples modelos y proveedores.
 3.  **Persistencia (Backend):** Base de datos **PostgreSQL** para almacenar chats, usuarios y configuraciones.
 
-LiteLLM se publica mediante Traefik en `https://litellm.kta41.local` y expone un
-catálogo inicial con un modelo local de Ollama y ejemplos de proveedores
-externos. Las credenciales no se almacenan en Git: se inyectan desde el
-Secret `litellm-models`.
+LiteLLM se publica mediante Traefik en `https://litellm.kta41.local` y expone
+dos modelos locales de Ollama (`qwen3-14b` y `qwen3-30b`), además de ejemplos
+de proveedores externos. Las credenciales no se almacenan en Git: se inyectan
+desde el Secret `litellm-models`.
 
 
 
@@ -52,10 +52,23 @@ Este proyecto está diseñado para ser desplegado instantáneamente mediante Arg
 
 2. Instalación
 
-Para desplegar todo el stack, aplica los manifiestos de orquestación:
+Para desplegar todo el stack, usa el instalador:
 
 ```bash
-kubectl apply -f argocd/
+cp .env.example .env
+chmod 700 scripts/install.sh
+scripts/install.sh --env-file .env
+```
+
+El instalador valida que Ollama esté accesible en `http://127.0.0.1:11435` y
+que los modelos `qwen3:14b` y `qwen3:30b` estén descargados antes de aplicar
+los recursos. Si ya tienes ArgoCD, Traefik y cert-manager, responde `yes` a
+la primera pregunta para conservarlos.
+
+También se pueden aplicar manualmente los manifiestos de orquestación:
+
+```bash
+kubectl apply -f Proxygpt/argocd/
 ```
 
 ArgoCD se encargará de sincronizar los recursos en el orden correcto, gestionando las dependencias y asegurando que el estado del clúster coincida con este repositorio.
@@ -85,8 +98,24 @@ LiteLLM usa la red del host (`hostNetwork`) y accede a Ollama mediante
 ocupa el 11434. Los alias `qwen3-14b` y `qwen3-30b` usan el adaptador
 `ollama_chat`, necesario para preservar las llamadas de herramientas cuando
 Open WebUI transmite la respuesta. Ollama está configurado para mantener un
-solo modelo generativo cargado a la vez; al cambiar de modelo, descarga el
-anterior antes de cargar el nuevo.
+solo modelo generativo cargado a la vez mediante
+`OLLAMA_MAX_LOADED_MODELS=1`; al cambiar de modelo, descarga el anterior antes
+de cargar el nuevo. En Windows, configúralo y reinicia Ollama:
+
+```powershell
+setx OLLAMA_MAX_LOADED_MODELS 1
+```
+
+Después de reiniciar Ollama, selecciona `qwen3-14b` o `qwen3-30b` en Open
+WebUI. Ambos aparecen en el catálogo, pero solo el modelo utilizado queda
+cargado en memoria.
+
+Para descargar los modelos manualmente:
+
+```bash
+curl -fsS http://127.0.0.1:11435/api/pull -d '{"model":"qwen3:14b"}'
+curl -fsS http://127.0.0.1:11435/api/pull -d '{"model":"qwen3:30b"}'
+```
 
 ## 💡 Lecciones Aprendidas (Troubleshooting)
 
