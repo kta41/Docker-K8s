@@ -46,7 +46,7 @@ for path in sorted(root.glob("*.json")):
     if not value.get("id"):
         raise SystemExit(f"{path}: missing required model id")
     models.append(value)
-print(json.dumps(models, ensure_ascii=False, separators=(",", ":")))
+print(json.dumps({"models": models}, ensure_ascii=False, separators=(",", ":")))
 PY
 )"
 
