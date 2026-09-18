@@ -59,7 +59,7 @@ spec:
         volumeMounts:
         - name: open-webui-storage
           mountPath: /app/backend/data
-      startupProbe:
+        startupProbe:
           httpGet:
             path: /health
             port: 8080
