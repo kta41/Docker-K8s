@@ -59,7 +59,7 @@ PostgreSQL unreadable.
 Render the overlays before applying changes:
 
 ```bash
-kubectl kustomize Proxygpt/postgres/base >/dev/null
-kubectl kustomize Proxygpt/litellm/overlays/prod >/dev/null
-kubectl kustomize Proxygpt/openwebui/overlays/prod >/dev/null
+kubectl kustomize deploy/postgres/base >/dev/null
+kubectl kustomize deploy/litellm/overlays/prod >/dev/null
+kubectl kustomize deploy/openwebui/overlays/prod >/dev/null
 ```

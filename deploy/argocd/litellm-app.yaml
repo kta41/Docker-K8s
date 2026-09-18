@@ -1,13 +1,13 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: openwebui
+  name: litellm
   namespace: argocd
 spec:
   project: default
   source:
-    repoURL: https://github.com/kta41/Docker-K8s.git
-    path: Proxygpt/openwebui/overlays/prod
+    repoURL: https://github.com/kta41/ProxyGPT.git
+    path: deploy/litellm/overlays/prod
     targetRevision: feat/postgres-auto-init
     kustomize: {}
   destination:
