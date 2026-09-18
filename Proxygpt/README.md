@@ -80,10 +80,10 @@ kubectl create secret generic litellm-models -n default \
   --from-literal=anthropic-api-key='sk-ant-...'
 ```
 
-LiteLLM usa `http://192.168.1.141:11434` para acceder a Ollama en el host
-Windows/WSL2. Si la IP del host cambia, actualiza `OLLAMA_API_BASE` en
-`litellm/base/deployment.yaml` y sincroniza Argo CD. El nombre del modelo
-(`llama3.2`) debe coincidir con el modelo descargado en Ollama.
+LiteLLM usa la red del host (`hostNetwork`) y accede a Ollama mediante
+`http://127.0.0.1:11435`. El puerto 11435 evita el `portproxy` de Windows que
+ocupa el 11434. El nombre del modelo (`llama3.1`) debe coincidir con el modelo
+descargado en Ollama.
 
 ## 💡 Lecciones Aprendidas (Troubleshooting)
 
