@@ -142,3 +142,154 @@ Si los pods no tienen salida a internet o fallan los DNS en WSL2:
 `sudo ip link delete cni0`
 `sudo ip link delete flannel.1`
 `sudo systemctl start k3s`
+
+## Configuración versionada de Open WebUI
+
+La configuración funcional de Open WebUI se mantiene en el repositorio
+separado [`kta41/openwebui-ai-config`](https://github.com/kta41/openwebui-ai-config).
+Este repositorio de infraestructura mantiene Kubernetes, Argo CD, Kustomize,
+Secrets y la configuración declarativa de LiteLLM; el repositorio externo
+mantiene los modelos personalizados, system prompts y documentación de
+Knowledge Bases.
+
+```text
+git push openwebui-ai-config
+        |
+        v
+Argo CD detecta main
+        |
+        v
+Kustomize genera ConfigMap con hash
+        |
+        v
+Sync Hook Job usa openwebui-sync-auth
+        |
+        v
+POST /api/v1/models/sync
+        |
+        v
+Open WebUI actualiza sus modelos personalizados
+```
+
+El Job usa el Service interno:
+
+```text
+http://open-webui-service.default.svc.cluster.local:8080
+```
+
+Por ello, la sincronización GitOps no depende del certificado CA del Ingress.
+El CA sólo es necesario para acceder desde la máquina local a
+`https://ia.kta41.local`.
+
+### Activar la Application de Argo CD
+
+La Application está en
+[`argocd/openwebui-config-app.yaml`](argocd/openwebui-config-app.yaml).
+Antes de aplicarla, crea el Secret con la API key de Open WebUI usando el
+`.env` local ignorado por Git:
+
+```bash
+cd /home/Kta41/Docker-K8s
+set -a
+source .env
+set +a
+
+kubectl create secret generic openwebui-sync-auth \
+  --namespace default \
+  --from-literal=api-key="$OPENWEBUI_API_KEY" \
+  --dry-run=client \
+  -o yaml | kubectl apply -f -
+
+unset OPENWEBUI_API_KEY
+```
+
+El repositorio privado también debe estar registrado en Argo CD con un
+Fine-grained Personal Access Token limitado a
+`kta41/openwebui-ai-config` y con `Contents: Read-only`:
+
+```bash
+read -rsp "GitHub token de solo lectura: " GITHUB_READ_TOKEN
+echo
+
+kubectl create secret generic repo-openwebui-ai-config \
+  --namespace argocd \
+  --from-literal=type=git \
+  --from-literal=url=https://github.com/kta41/openwebui-ai-config.git \
+  --from-literal=username=kta41 \
+  --from-literal=password="$GITHUB_READ_TOKEN" \
+  --dry-run=client \
+  -o yaml |
+  kubectl label --local -f - \
+    argocd.argoproj.io/secret-type=repository \
+    -o yaml |
+  kubectl apply -f -
+
+unset GITHUB_READ_TOKEN
+```
+
+Aplica y verifica:
+
+```bash
+kubectl apply -f Proxygpt/argocd/openwebui-config-app.yaml
+kubectl get application openwebui-config -n argocd
+kubectl get jobs,pods -n default -l app=openwebui-model-sync
+```
+
+El estado esperado es `Synced`, `Healthy` y `Succeeded`.
+
+### Modificar modelos y prompts
+
+Edita el repositorio externo:
+
+```bash
+cd /home/Kta41/openwebui-ai-config
+nano models/qwen3-14b-assistant.json
+```
+
+Si creas un JSON nuevo, añádelo explícitamente a
+`kustomization.yaml`. Valida y publica:
+
+```bash
+python3 -m json.tool models/qwen3-14b-assistant.json >/dev/null
+kubectl kustomize . >/dev/null
+git add models/ kustomization.yaml
+git commit -m "Update Open WebUI model"
+git push
+```
+
+Argo CD detectará el commit, generará un nuevo ConfigMap y ejecutará el Job
+automáticamente. La reconciliación es exacta: los modelos ausentes del payload
+se eliminan de Open WebUI.
+
+### Certificado CA local
+
+El CA raíz está en el Secret `kta-root-ca` del namespace `cert-manager`:
+
+```bash
+kubectl get secret kta-root-ca \
+  -n cert-manager \
+  -o jsonpath='{.data.tls\.crt}' |
+  base64 -d |
+  sudo tee /usr/local/share/ca-certificates/kta-root-ca.crt >/dev/null
+
+sudo update-ca-certificates
+```
+
+Después, `curl https://ia.kta41.local/health` debe funcionar sin `-k`.
+El Job de Argo CD no necesita este CA porque usa el Service interno HTTP.
+
+## Documentación relacionada
+
+- [Guía completa de instalación](../docs/INSTALL.md)
+- [Contrato de configuración GitOps](../docs/CONFIG-GITOPS.md)
+- [Configuración GitOps de Open WebUI](../docs/OPENWEBUI-GITOPS.md)
+- [Repositorio de configuración Open WebUI](https://github.com/kta41/openwebui-ai-config)
+- [Documentación de Open WebUI](https://docs.openwebui.com/)
+- [Documentación de LiteLLM](https://docs.litellm.ai/)
+
+## Seguridad
+
+Nunca publicar `.env`, API keys, tokens de GitHub, `LITELLM_MASTER_KEY`,
+`LITELLM_SALT_KEY`, claves de proveedores, JWT, cookies, sesiones, `tls.key` o
+dumps de PostgreSQL. Las Functions y Tools de Open WebUI ejecutan código en el
+servidor y deben revisarse como código privilegiado.
