@@ -54,6 +54,11 @@ setx OLLAMA_MAX_LOADED_MODELS 1
 of the LiteLLM database. Changing it can make provider credentials stored in
 PostgreSQL unreadable.
 
+The public stack does not require the optional Open WebUI configuration
+repository. To enable custom models and prompts from a compatible repository,
+follow [the optional Open WebUI GitOps guide](OPENWEBUI-GITOPS.md) after the
+base installation.
+
 ## Rendering checks
 
 Render the overlays before applying changes:

@@ -170,9 +170,9 @@ together with a parameterized installer. It also added:
 - LiteLLM access to host Ollama through `hostNetwork`.
 - Support for Ollama tool calls and streaming.
 
-This branch adds the second repository `openwebui-ai-config`, the Argo CD Application
-and Sync Hook Job to synchronize custom models and
-system prompts through the official Open WebUI API.
+This branch adds optional integration with the second repository
+`openwebui-ai-config`, using an Argo CD Application and Sync Hook Job to
+synchronize custom models and system prompts through the official Open WebUI API.
 
 ## Versioned Open WebUI Configuration
 
@@ -212,10 +212,13 @@ Therefore, GitOps synchronization does not depend on the Ingress CA certificate.
 The CA is only needed to access
 `https://ia.kta41.local`.
 
-### Enable the Argo CD Application
+### Optional: Enable the Argo CD Application
 
-The Application is at
-[`deploy/argocd/openwebui-config-app.yaml`](deploy/argocd/openwebui-config-app.yaml).
+The public stack does not require the private configuration repository. The
+optional Application is at
+[`deploy/optional/openwebui-config-app.yaml`](deploy/optional/openwebui-config-app.yaml).
+Do not apply it unless you have access to your own compatible configuration
+repository and have created the required Secret.
 Before applying it, create the Open WebUI API key Secret using the
 `.env` local file ignored by Git:
 
@@ -261,7 +264,7 @@ unset GITHUB_READ_TOKEN
 Apply and verify:
 
 ```bash
-kubectl apply -f deploy/argocd/openwebui-config-app.yaml
+kubectl apply -f deploy/optional/openwebui-config-app.yaml
 kubectl get application openwebui-config -n argocd
 kubectl get jobs,pods -n default -l app=openwebui-model-sync
 ```

@@ -1,4 +1,9 @@
-# Enable Open WebUI GitOps Synchronization
+# Optional Open WebUI GitOps Synchronization
+
+The public infrastructure stack does not require this repository. Apply this
+optional integration only if you have access to a compatible Open WebUI
+configuration repository and want Argo CD to synchronize custom models and
+prompts.
 
 The `openwebui-config` Application points to
 `https://github.com/kta41/openwebui-ai-config.git`. The repository contains a
@@ -57,11 +62,11 @@ kubectl logs -n argocd deployment/argocd-repo-server --tail=100
 
 ## 3. Create the Application
 
-The Application is already in
-`deploy/argocd/openwebui-config-app.yaml`. Apply it once:
+The optional Application is in
+`deploy/optional/openwebui-config-app.yaml`. Apply it once:
 
 ```bash
-kubectl apply -f deploy/argocd/openwebui-config-app.yaml
+kubectl apply -f deploy/optional/openwebui-config-app.yaml
 ```
 
 Check its status:
