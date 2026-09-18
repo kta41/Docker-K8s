@@ -1,4 +1,4 @@
-#  🚀 AI-Stack GitOps: LiteLLM + Open WebUI + Postgres
+#  AI-Stack GitOps: LiteLLM + Open WebUI + Postgres
 
 Este repositorio contiene la arquitectura completa para desplegar un stack de Inteligencia Artificial privado y escalable en **Kubernetes**. La gestión de la infraestructura se realiza mediante un modelo **GitOps** utilizando **ArgoCD** y **Kustomize**.
 
@@ -15,6 +15,11 @@ El stack se compone de tres capas principales diseñadas para trabajar en armon�
 1.  **Interfaz de Usuario (Frontend):** [Open WebUI](https://github.com/open-webui/open-webui), una interfaz intuitiva para interactuar con LLMs.
 2.  **Orquestador de Modelos (Middleware):** [LiteLLM](https://github.com/BerriAI/litellm), que actúa como proxy para gestionar múltiples modelos y proveedores.
 3.  **Persistencia (Backend):** Base de datos **PostgreSQL** para almacenar chats, usuarios y configuraciones.
+
+LiteLLM se publica mediante Traefik en `https://litellm.kta41.local` y expone
+dos modelos locales de Ollama (`qwen3-14b` y `qwen3-30b`), además de ejemplos
+de proveedores externos. Las credenciales no se almacenan en Git: se inyectan
+desde el Secret `litellm-models`.
 
 
 
@@ -47,10 +52,23 @@ Este proyecto está diseñado para ser desplegado instantáneamente mediante Arg
 
 2. Instalación
 
-Para desplegar todo el stack, aplica los manifiestos de orquestación:
+Para desplegar todo el stack, usa el instalador:
 
 ```bash
-kubectl apply -f argocd/
+cp .env.example .env
+chmod 700 scripts/install.sh
+scripts/install.sh --env-file .env
+```
+
+El instalador valida que Ollama esté accesible en `http://127.0.0.1:11435` y
+que los modelos `qwen3:14b` y `qwen3:30b` estén descargados antes de aplicar
+los recursos. Si ya tienes ArgoCD, Traefik y cert-manager, responde `yes` a
+la primera pregunta para conservarlos.
+
+También se pueden aplicar manualmente los manifiestos de orquestación:
+
+```bash
+kubectl apply -f Proxygpt/argocd/
 ```
 
 ArgoCD se encargará de sincronizar los recursos en el orden correcto, gestionando las dependencias y asegurando que el estado del clúster coincida con este repositorio.
@@ -59,6 +77,44 @@ Con el cluster de postgresql activado, el ultimo paso de despliegue será genera
 
 ```bash
 kubectl exec -it $(kubectl get pod -l app=postgres -o name) -- psql -U admin -d litellm -c "CREATE DATABASE openwebui_db;"
+```
+
+### Modelos de LiteLLM
+
+La Application de LiteLLM usa `litellm/overlays/prod`, que incluye el
+Certificate y el Ingress para `litellm.kta41.local`. El fichero
+`litellm/base/config.yaml` define los alias `ollama-local`, `gpt-4o-mini` y
+`claude-3-5-sonnet`. Para habilitar proveedores externos, crea el Secret en el
+namespace `default` sin incluirlo en el repositorio:
+
+```bash
+kubectl create secret generic litellm-models -n default \
+  --from-literal=openai-api-key='sk-...' \
+  --from-literal=anthropic-api-key='sk-ant-...'
+```
+
+LiteLLM usa la red del host (`hostNetwork`) y accede a Ollama mediante
+`http://127.0.0.1:11435`. El puerto 11435 evita el `portproxy` de Windows que
+ocupa el 11434. Los alias `qwen3-14b` y `qwen3-30b` usan el adaptador
+`ollama_chat`, necesario para preservar las llamadas de herramientas cuando
+Open WebUI transmite la respuesta. Ollama está configurado para mantener un
+solo modelo generativo cargado a la vez mediante
+`OLLAMA_MAX_LOADED_MODELS=1`; al cambiar de modelo, descarga el anterior antes
+de cargar el nuevo. En Windows, configúralo y reinicia Ollama:
+
+```powershell
+setx OLLAMA_MAX_LOADED_MODELS 1
+```
+
+Después de reiniciar Ollama, selecciona `qwen3-14b` o `qwen3-30b` en Open
+WebUI. Ambos aparecen en el catálogo, pero solo el modelo utilizado queda
+cargado en memoria.
+
+Para descargar los modelos manualmente:
+
+```bash
+curl -fsS http://127.0.0.1:11435/api/pull -d '{"model":"qwen3:14b"}'
+curl -fsS http://127.0.0.1:11435/api/pull -d '{"model":"qwen3:30b"}'
 ```
 
 ## 💡 Lecciones Aprendidas (Troubleshooting)
@@ -70,3 +126,19 @@ Durante el desarrollo, se resolvieron retos técnicos críticos, destacando:
     GitOps Workflow: Migración de configuraciones estáticas a un flujo dinámico con Kustomize, permitiendo la reutilización de código entre bases y parches de producción.
 
     Seguridad de Secretos: Implementación de inyección de secretos en memoria para evitar la exposición de credenciales en el historial de Git.
+
+## Fix Red WSL2 (Timeout Descargas)
+Si los pods no tienen salida a internet o fallan los DNS en WSL2:
+
+1. Cambiar Flannel a Host Gateway:
+`echo "flannel-backend: host-gw" | sudo tee -a /etc/rancher/k3s/config.yaml`
+
+2. Usar DNS externos puros:
+`echo "nameserver 8.8.8.8" | sudo tee /etc/rancher/k3s/resolv.conf`
+`echo "resolv-conf: /etc/rancher/k3s/resolv.conf" | sudo tee -a /etc/rancher/k3s/config.yaml`
+
+3. Purgar y reiniciar:
+`sudo systemctl stop k3s`
+`sudo ip link delete cni0`
+`sudo ip link delete flannel.1`
+`sudo systemctl start k3s`

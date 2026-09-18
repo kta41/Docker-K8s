@@ -4,12 +4,10 @@ source:
   targetRevision: 10.2.0
   helm:
     values: |
-      # Desactivamos lo que rompe permisos
       postgresql: { enabled: false }
       postgresql-ha: { enabled: false }
       redis-cluster: { enabled: false }
 
-      # Quitamos los scripts de espera que te bloquean en "init"
       init:
         waitForDatabase: false
 
@@ -22,7 +20,6 @@ source:
           security:
             INSTALL_LOCK: true
 
-      # INGRESS PARA TRAEFIK
       ingress:
         enabled: true
         className: traefik

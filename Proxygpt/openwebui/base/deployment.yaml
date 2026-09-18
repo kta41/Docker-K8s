@@ -23,7 +23,7 @@ spec:
             memory: "500Mi"
           limits:
             cpu: "1000m"
-            memory: "1Gi"
+            memory: "2Gi"
         env:
         - name: DB_PASSWORD
           valueFrom:
@@ -40,16 +40,32 @@ spec:
               name: openwebui-auth
               key: proxy-key
         - name: WEBUI_URL
-          value: "https://placeholder.kta41.local" # <-- Será sustituido
+          value: "https://ia.kta41.local" # <-- Será sustituido
         - name: WEBUI_NAME
           value: "IA Segura"
         - name: ENABLE_SIGNUP
           value: "true"
         - name: DEFAULT_USER_ROLE
           value: "pending"
+        - name: RAG_EMBEDDING_ENGINE
+          value: "openai"
+        - name: RAG_OPENAI_API_BASE_URL
+          value: "http://litellm-service:4000/v1"
+        - name: RAG_OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: openwebui-auth
+              key: proxy-key
         volumeMounts:
         - name: open-webui-storage
           mountPath: /app/backend/data
+      startupProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          failureThreshold: 60
       volumes:
       - name: open-webui-storage
         persistentVolumeClaim:

@@ -14,15 +14,27 @@ spec:
       labels:
         app: litellm
     spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
       containers:
         - name: litellm
           image: ghcr.io/berriai/litellm:main-latest
+          args:
+            - --config
+            - /app/config.yaml
+            - --port
+            - "4001"
           env:
             - name: LITELLM_MASTER_KEY
               valueFrom:
                 secretKeyRef:
                   name: litellm-auth
                   key: master-key
+            - name: LITELLM_SALT_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: litellm-auth
+                  key: salt-key
             - name: UI_PASSWORD
               valueFrom:
                 secretKeyRef:
@@ -46,3 +58,26 @@ spec:
               value: "https://placeholder.kta41.local/"   # ← Changed on Kustomize
             - name: SECURE_COOKIES
               value: "true"
+            - name: OLLAMA_API_BASE
+              value: "http://127.0.0.1:11435"
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: litellm-models
+                  key: openai-api-key
+                  optional: true
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: litellm-models
+                  key: anthropic-api-key
+                  optional: true
+          volumeMounts:
+            - name: litellm-config
+              mountPath: /app/config.yaml
+              subPath: config.yaml
+              readOnly: true
+      volumes:
+        - name: litellm-config
+          configMap:
+            name: litellm-model-config
